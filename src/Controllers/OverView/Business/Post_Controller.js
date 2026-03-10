@@ -13,6 +13,8 @@ import { ApiResponse } from "../../../utils/ApiResponse.js";
 import { emitUnreadCountUpdate } from "../../../socket/socket.js";
 import { getMarketplaceRecommendations } from "../../../services/recommendation.system.service.js";
 
+
+
 const productPostAggregation = (req) => {
     const userId = new mongoose.Types.ObjectId(req.user?._id);
     return [
@@ -225,60 +227,7 @@ const productPostAggregation = (req) => {
     ];
 };
 
-// export const getBusinessFeedPosts = asyncHandler(async (req, res) => {
 
-//     try {
-
-//         const page = parseInt(req.query.page) || 1;
-//         const limit = parseInt(req.query.limit) || 20;
-//         const skip = (page - 1) * limit;
-
-//         const productAggregation = BusinessProduct.aggregate([
-//             ...productPostAggregation(req),
-//             { $sort: { createdAt: -1 } },
-//         ]);
-
-//         const allProducts = await BusinessProduct.aggregatePaginate(
-//             productAggregation,
-//             getMongoosePaginationOptions({
-//                 page,
-//                 limit,
-//                 customLabels: {
-//                     totalDocs: "totalPosts",
-//                     docs: "posts",
-//                 },
-//             })
-//         );
-
-//         // Get total count for pagination
-//         const totalCount = await BusinessProduct.countDocuments();
-
-//         const totalPages = Math.ceil(totalCount / limit);
-//         const hasNextPage = page < totalPages;
-
-
-
-//         if (!allProducts) {
-//             return res.status(400).json({
-//                 success: true,
-//                 message: "Products not available",
-//                 data: allProducts
-//             });
-//         }
-
-
-//         return res.status(200).json({
-//             data: allProducts,
-//             currentPage: page,
-//             totalPages: totalPages,
-//             hasNextPage: hasNextPage
-//         });
-
-//     } catch (error) {
-//         console.log("Something Went wrong!!", error);
-//         return;
-//     }
-// });
 
 export const getBusinessFeedPosts = asyncHandler(async (req, res) => {
   try {
