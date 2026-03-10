@@ -1,18 +1,18 @@
 // ============================================================
 // CORE DEPENDENCIES
 // ============================================================
-import cookieParser from "cookie-parser";
-import cors from "cors";
-import express from "express";
-import bodyParser from "body-parser";
+import CookieParser from "cookie-parser";
+import Cors from "cors";
+import Express from "express";
+import Body_Parser from "body-parser";
 import { rateLimit } from "express-rate-limit";
-import session from "express-session";
-import fs from "fs";
+import Session from "express-session";
+import Fs from "fs";
 import { createServer } from "http";
-import passport from "passport";
-import path from "path";
+import Passport from "passport";
+import Path from "path";
 import { Server } from "socket.io";
-import swaggerUi from "swagger-ui-express";
+import Swagger_Ui from "swagger-ui-express";
 import { fileURLToPath } from "url";
 import YAML from "yaml";
 
@@ -30,25 +30,25 @@ import { ApiError } from "./utils/ApiError.js";
 import { ApiResponse } from "./utils/ApiResponse.js";
 
 // ============================================================
-//  FILE PATH SETUP (ESM __dirname equivalent)
+// FILE PATH SETUP (ESM __dirname equivalent)
 // ============================================================
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname = Path.dirname(__filename);
 
 // ============================================================
-//  SWAGGER DOCUMENTATION SETUP
+// SWAGGER DOCUMENTATION SETUP
 // ============================================================
-const file = fs.readFileSync(path.resolve(__dirname, "./swagger.yaml"), "utf8");
+const file = Fs.readFileSync(Path.resolve(__dirname, "./swagger.yaml"), "utf8");
 const swaggerDocument = YAML.parse(file);
 
 // ============================================================
 // APP & HTTP SERVER INITIALIZATION
 // ============================================================
-const app = express();
+const app = Express();
 const httpServer = createServer(app);
 
 // ============================================================
-// 🔌 SOCKET.IO SETUP
+// SOCKET.IO SETUP
 // ============================================================
 const io = new Server(httpServer, {
   pingTimeout: 60000,
@@ -68,7 +68,7 @@ app.set("io", io); // Preferred over global — avoids polluting the global scop
 
 // -- CORS: Allow requests from specified origin
 app.use(
-  cors({
+  Cors({
     origin: process.env.CORS_ORIGIN,
     credentials: true,
   })
@@ -90,240 +90,240 @@ const limiter = rateLimit({
 app.use(limiter);
 
 // -- BODY PARSERS: Handle JSON, URL-encoded, and static files
-app.use(express.json({ limit: "16kb" }));
-app.use(express.urlencoded({ extended: true, limit: "16kb" }));
-app.use(express.static("public")); // Serve static files (e.g., images) from /public
-app.use(cookieParser());
-app.use(bodyParser.json()); // Parse JSON payloads
+app.use(Express.json({ limit: "16kb" }));
+app.use(Express.urlencoded({ extended: true, limit: "16kb" }));
+app.use(Express.static("public")); // Serve static files (e.g., images) from /public
+app.use(CookieParser());
+app.use(Body_Parser.json()); // Parse JSON payloads
 
 // -- SESSION & PASSPORT: Authentication support
 app.use(
-  session({
+  Session({
     secret: process.env.EXPRESS_SESSION_SECRET,
     resave: true,
     saveUninitialized: true,
   })
 );
-app.use(passport.initialize());
-app.use(passport.session()); // Enable persistent login sessions
+app.use(Passport.initialize());
+app.use(Passport.session()); // Enable persistent login sessions
 
 // ============================================================
 // ERROR HANDLING MIDDLEWARE
 // ============================================================
-import { errorHandler } from "./middlewares/error.middlewares.js";
+import { errorHandler } from "./Middlewares/Error.Middlewares.js";
 
 // ============================================================
-//  HEALTHCHECK ROUTE
+// HEALTHCHECK ROUTE
 // ============================================================
-import healthcheckRouter from "./routes/healthcheck.routes.js";
+import Healthcheck_Router from "./Routes/Healthcheck.Routes.js";
 
 // ============================================================
 // PUBLIC API ROUTES (No auth required)
 // ============================================================
-import bookRouter          from "./routes/public/book.routes.js";
-import catRouter           from "./routes/public/cat.routes.js";
-import dogRouter           from "./routes/public/dog.routes.js";
-import mealRouter          from "./routes/public/meal.routes.js";
-import quoteRouter         from "./routes/public/quote.routes.js";
-import randomjokeRouter    from "./routes/public/randomjoke.routes.js";
-import randomproductRouter from "./routes/public/randomproduct.routes.js";
-import randomuserRouter    from "./routes/public/randomuser.routes.js";
-import youtubeRouter       from "./routes/public/youtube.routes.js";
+import Book_Router           from "./Routes/Public/Book.Routes.js";
+import Cat_Router            from "./Routes/Public/Cat.Routes.js";
+import Dog_Router            from "./Routes/Public/Dog.Routes.js";
+import Meal_Router           from "./Routes/Public/Meal.Routes.js";
+import Quote_Router          from "./Routes/Public/Quote.Routes.js";
+import Random_Joke_Router    from "./Routes/Public/RandomJoke.Routes.js";
+import Random_Product_Router from "./Routes/Public/RandomProduct.Routes.js";
+import Random_User_Router    from "./Routes/Public/RandomUser.Routes.js";
+import Youtube_Router        from "./Routes/Public/Youtube.Routes.js";
 
 // ============================================================
 // USER & AUTHENTICATION ROUTES
 // ============================================================
-import userRouter         from "./routes/apps/auth/user.routes.js";
-import userRoutes         from "./routes/userRoutes.js";
-import userLocationRouter from "./routes/location/user.location.route.js";
+import Users_Router       from "./Routes/Apps/Auth/User.Routes.js";
+import Users_Routes       from "./Routes/Users_Routes.js";
+import User_Location_Router from "./Routes/Location/User.Location.Route.js";
 
 // ============================================================
 // BUSINESS ROUTES
 // ============================================================
-import businessRouter                  from "./routes/apps/business/profile.routes.js";
-import catalogueRouter                 from "./routes/apps/business/catalogue.routes.js";
-import businessPostRouter              from "./routes/apps/business/business.post.routes.js";
-import businessPostLikesRouter         from "./routes/apps/business/businesspost/business.post.like.routes.js";
-import businessPostCommentsRouter      from "./routes/apps/business/businesspost/business.post.comment.routes.js";
-import businessPostCommentReplyRouter  from "./routes/apps/business/businesspost/business.post.comment.reply.routes.js";
-import businessPostBookmarkRouter      from "./routes/apps/business/businesspost/business.post.bookmark.routes.js";
-import businessNotificationRouter      from "./routes/apps/notifications/business.notification.routes.js";
+import Business_Router                   from "./Routes/Apps/Business/Profile.Routes.js";
+import Catalogue_Router                  from "./Routes/Apps/Business/Catalogue.Routes.js";
+import Business_Post_Router              from "./Routes/Apps/Business/Business.Post.Routes.js";
+import Business_Post_Likes_Router        from "./Routes/Apps/Business/BusinessPost/Business.Post.Like.Routes.js";
+import Business_Post_Comments_Router     from "./Routes/Apps/Business/BusinessPost/Business.Post.Comment.Routes.js";
+import Business_Post_Comment_Reply_Router from "./Routes/Apps/Business/BusinessPost/Business.Post.Comment.Reply.Routes.js";
+import Business_Post_Bookmark_Router     from "./Routes/Apps/Business/BusinessPost/Business.Post.Bookmark.Routes.js";
+import Business_Notification_Router      from "./Routes/Apps/Notifications/Business.Notification.Routes.js";
 
 // ============================================================
 // NOTIFICATION ROUTES
 // ============================================================
-import notificationRouter from "./routes/apps/notifications/notification.routes.js";
+import Notification_Router from "./Routes/Apps/Notifications/Notification.Routes.js";
 
 // ============================================================
 // GIF ROUTES
 // ============================================================
-import gifRouter from "./routes/apps/gif/gif.route.js";
+import Gif_Router from "./Routes/Apps/Gif/Gif.Route.js";
 
 // ============================================================
 // ECOMMERCE ROUTES
 // ============================================================
-import addressRouter    from "./routes/apps/ecommerce/address.routes.js";
-import cartRouter       from "./routes/apps/ecommerce/cart.routes.js";
-import categoryRouter   from "./routes/apps/ecommerce/category.routes.js";
-import couponRouter     from "./routes/apps/ecommerce/coupon.routes.js";
-import orderRouter      from "./routes/apps/ecommerce/order.routes.js";
-import productRouter    from "./routes/apps/ecommerce/product.routes.js";
-import ecomProfileRouter from "./routes/apps/ecommerce/profile.routes.js";
+import Address_Router     from "./Routes/Apps/Ecommerce/Address.Routes.js";
+import Cart_Router        from "./Routes/Apps/Ecommerce/Cart.Routes.js";
+import Category_Router    from "./Routes/Apps/Ecommerce/Category.Routes.js";
+import Coupon_Router      from "./Routes/Apps/Ecommerce/Coupon.Routes.js";
+import Order_Router       from "./Routes/Apps/Ecommerce/Order.Routes.js";
+import Product_Router     from "./Routes/Apps/Ecommerce/Product.Routes.js";
+import Ecom_Profile_Router from "./Routes/Apps/Ecommerce/Profile.Routes.js";
 
 // ============================================================
 // SOCIAL MEDIA / SHORTS ROUTES
 // ============================================================
-import socialBlockRouter                    from "./routes/apps/social-media/block.routes.js";
-import socialBookmarkRouter                 from "./routes/apps/social-media/bookmark.routes.js";
-import socialCommentRouter                  from "./routes/apps/social-media/comment.routes.js";
-import socialCommentReplyRouter             from "./routes/apps/social-media/comment.reply.routes.js";
-import socialFollowRouter                   from "./routes/apps/social-media/follow.routes.js";
-import socialLikeRouter                     from "./routes/apps/social-media/like.routes.js";
-import socialPostRouter                     from "./routes/apps/social-media/post.routes.js";
-import socialProfileRouter                  from "./routes/apps/social-media/profile.routes.js";
-import userFollowingShowMoreOptionsRouter   from "./routes/apps/social-media/userFollowingShowMoreOptions.routes.js";
-import socialRepostRouter                   from "./routes/apps/social-media/repost.routes.js";
-import socialShareRouter                    from "./routes/apps/social-media/share.routes.js";
+import Social_Block_Router                  from "./Routes/Apps/Social-Media/Block.Routes.js";
+import Social_Bookmark_Router               from "./Routes/Apps/Social-Media/Bookmark.Routes.js";
+import Social_Comment_Router                from "./Routes/Apps/Social-Media/Comment.Routes.js";
+import Social_Comment_Reply_Router          from "./Routes/Apps/Social-Media/Comment.Reply.Routes.js";
+import Social_Follow_Router                 from "./Routes/Apps/Social-Media/Follow.Routes.js";
+import Social_Like_Router                   from "./Routes/Apps/Social-Media/Like.Routes.js";
+import Social_Post_Router                   from "./Routes/Apps/Social-Media/Post.Routes.js";
+import Social_Profile_Router                from "./Routes/Apps/Social-Media/Profile.Routes.js";
+import User_Following_Show_More_Options_Router from "./Routes/Apps/Social-Media/UserFollowingShowMoreOptions.Routes.js";
+import Social_Repost_Router                 from "./Routes/Apps/Social-Media/Repost.Routes.js";
+import Social_Share_Router                  from "./Routes/Apps/Social-Media/Share.Routes.js";
 
 // ============================================================
 // FEED POST ROUTES
 // ============================================================
-import feedRouter             from "./routes/apps/feed/feed.routes.js";
-import feedLikeRouter         from "./routes/apps/feed/feed_like.routes.js";
-import feedCommentRouter      from "./routes/apps/feed/feed_comment.routes.js";
-import feedCommentReplyRouter from "./routes/apps/feed/feed_comment.reply.routes.js";
-import feedBookmarkRouter     from "./routes/apps/feed/feed_bookmark.routes.js";
-import feedRepostRouter       from "./routes/apps/feed/feed_repost.routes.js";
-import feedShareRouter        from "./routes/apps/feed/feed_share.routes.js";
-import feedFollowedRouter     from "./routes/apps/feed/feed_followUnfollow.routes.js";
+import Feed_Router              from "./Routes/Apps/Feed/Feed.Routes.js";
+import Feed_Like_Router         from "./Routes/Apps/Feed/Feed_Like.Routes.js";
+import Feed_Comment_Router      from "./Routes/Apps/Feed/Feed_Comment.Routes.js";
+import Feed_Comment_Reply_Router from "./Routes/Apps/Feed/Feed_Comment.Reply.Routes.js";
+import Feed_Bookmark_Router     from "./Routes/Apps/Feed/Feed_Bookmark.Routes.js";
+import Feed_Repost_Router       from "./Routes/Apps/Feed/Feed_Repost.Routes.js";
+import Feed_Share_Router        from "./Routes/Apps/Feed/Feed_Share.Routes.js";
+import Feed_Followed_Router     from "./Routes/Apps/Feed/Feed_FollowUnfollow.Routes.js";
 
 // ============================================================
-//  RECOMMENDATION / EVENTS ROUTES
+// RECOMMENDATION / EVENTS ROUTES
 // ============================================================
-import recomendationEventsRouter from "./routes/apps/events/events.routes.js";
+import Recomendation_Events_Router from "./Routes/Apps/Events/Events.Routes.js";
 
 // ============================================================
-//  CHAT APP ROUTES
+// CHAT APP ROUTES
 // ============================================================
-import chatRouter    from "./routes/apps/chat-app/chat.routes.js";
-import messageRouter from "./routes/apps/chat-app/message.routes.js";
+import Chat_Router    from "./Routes/Apps/Chat-App/Chat.Routes.js";
+import Message_Router from "./Routes/Apps/Chat-App/Message.Routes.js";
 
 // ============================================================
 // TODO ROUTES
 // ============================================================
-import todoRouter from "./routes/apps/todo/todo.routes.js";
+import Todo_Router from "./Routes/Apps/Todo/Todo.Routes.js";
 
 // ============================================================
 // KITCHEN SINK ROUTES (Testing/Utility)
 // ============================================================
-import cookieRouter             from "./routes/kitchen-sink/cookie.routes.js";
-import httpmethodRouter         from "./routes/kitchen-sink/httpmethod.routes.js";
-import imageRouter              from "./routes/kitchen-sink/image.routes.js";
-import redirectRouter           from "./routes/kitchen-sink/redirect.routes.js";
-import requestinspectionRouter  from "./routes/kitchen-sink/requestinspection.routes.js";
-import responseinspectionRouter from "./routes/kitchen-sink/responseinspection.routes.js";
-import statuscodeRouter         from "./routes/kitchen-sink/statuscode.routes.js";
+import Cookie_Router              from "./Routes/Kitchen-Sink/Cookie.Routes.js";
+import Http_Method_Router         from "./Routes/Kitchen-Sink/HttpMethod.Routes.js";
+import Image_Router               from "./Routes/Kitchen-Sink/Image.Routes.js";
+import Redirect_Router            from "./Routes/Kitchen-Sink/Redirect.Routes.js";
+import Request_Inspection_Router  from "./Routes/Kitchen-Sink/RequestInspection.Routes.js";
+import Response_Inspection_Router from "./Routes/Kitchen-Sink/ResponseInspection.Routes.js";
+import Status_Code_Router         from "./Routes/Kitchen-Sink/StatusCode.Routes.js";
 
 // ============================================================
-//  DATABASE SEEDING HANDLERS
+// DATABASE SEEDING HANDLERS
 // ============================================================
-import { seedChatApp }                        from "./seeds/chat-app.seeds.js";
-import { seedEcommerce }                      from "./seeds/ecommerce.seeds.js";
-import { seedSocialMedia }                    from "./seeds/social-media.seeds.js";
-import { seedTodos }                          from "./seeds/todo.seeds.js";
-import { getGeneratedCredentials, seedUsers } from "./seeds/user.seeds.js";
+import { seedChatApp }                        from "./Seeds/Chat-App.Seeds.js";
+import { seedEcommerce }                      from "./Seeds/Ecommerce.Seeds.js";
+import { seedSocialMedia }                    from "./Seeds/Social-Media.Seeds.js";
+import { seedTodos }                          from "./Seeds/Todo.Seeds.js";
+import { getGeneratedCredentials, seedUsers } from "./Seeds/User.Seeds.js";
 
 // ============================================================
 // ROUTE MOUNTING
 // ============================================================
 
 // -- Healthcheck
-app.use("/api/v1/healthcheck", healthcheckRouter);
+app.use("/api/v1/healthcheck", Healthcheck_Router);
 
 // -- Public APIs (no auth required)
-app.use("/api/v1/public/randomusers",    randomuserRouter);
-app.use("/api/v1/public/randomproducts", randomproductRouter);
-app.use("/api/v1/public/randomjokes",    randomjokeRouter);
-app.use("/api/v1/public/books",          bookRouter);
-app.use("/api/v1/public/quotes",         quoteRouter);
-app.use("/api/v1/public/meals",          mealRouter);
-app.use("/api/v1/public/dogs",           dogRouter);
-app.use("/api/v1/public/cats",           catRouter);
-app.use("/api/v1/public/youtube",        youtubeRouter);
+app.use("/api/v1/public/randomusers",    Random_User_Router);
+app.use("/api/v1/public/randomproducts", Random_Product_Router);
+app.use("/api/v1/public/randomjokes",    Random_Joke_Router);
+app.use("/api/v1/public/books",          Book_Router);
+app.use("/api/v1/public/quotes",         Quote_Router);
+app.use("/api/v1/public/meals",          Meal_Router);
+app.use("/api/v1/public/dogs",           Dog_Router);
+app.use("/api/v1/public/cats",           Cat_Router);
+app.use("/api/v1/public/youtube",        Youtube_Router);
 
 // -- User & Auth
-app.use("/api/v1/users", userRouter);
-app.use("/users",        userRoutes);
+app.use("/api/v1/users", Users_Router);
+app.use("/users",        Users_Routes);
 
 // -- Notifications
-app.use("/api/v1/notifications",            notificationRouter);
-app.use("/api/v1/business/notifications",   businessNotificationRouter);
+app.use("/api/v1/notifications",          Notification_Router);
+app.use("/api/v1/business/notifications", Business_Notification_Router);
 
 // -- Business
-app.use("/api/v1/business/profile",                      businessRouter);
-app.use("/api/v1/business/catalogue",                    catalogueRouter);
-app.use("/api/v1/business/product-posts",                businessPostRouter);
-app.use("/api/v1/business/product-posts/likes",          businessPostLikesRouter);
-app.use("/api/v1/business/product-posts/comments",       businessPostCommentsRouter);
-app.use("/api/v1/business/product-posts/comments/replies", businessPostCommentReplyRouter);
-app.use("/api/v1/business/products-posts/bookmarks",     businessPostBookmarkRouter);
+app.use("/api/v1/business/profile",                        Business_Router);
+app.use("/api/v1/business/catalogue",                      Catalogue_Router);
+app.use("/api/v1/business/product-posts",                  Business_Post_Router);
+app.use("/api/v1/business/product-posts/likes",            Business_Post_Likes_Router);
+app.use("/api/v1/business/product-posts/comments",         Business_Post_Comments_Router);
+app.use("/api/v1/business/product-posts/comments/replies", Business_Post_Comment_Reply_Router);
+app.use("/api/v1/business/products-posts/bookmarks",       Business_Post_Bookmark_Router);
 
 // -- GIF
-app.use("/api/v1/gif", gifRouter);
+app.use("/api/v1/gif", Gif_Router);
 
 // -- Feed Posts
-app.use("/api/v1/feed/followed",       feedFollowedRouter);
-app.use("/api/v1/feed/post",           feedRouter);
-app.use("/api/v1/feed/likes",          feedLikeRouter);
-app.use("/api/v1/feed/comments",       feedCommentRouter);
-app.use("/api/v1/feed/comment/reply",  feedCommentReplyRouter);
-app.use("/api/v1/feed/bookmarks",      feedBookmarkRouter);
-app.use("/api/v1/feed/repost",         feedRepostRouter);
-app.use("/api/v1/feed/share",          feedShareRouter);
+app.use("/api/v1/feed/followed",       Feed_Followed_Router);
+app.use("/api/v1/feed/post",           Feed_Router);
+app.use("/api/v1/feed/likes",          Feed_Like_Router);
+app.use("/api/v1/feed/comments",       Feed_Comment_Router);
+app.use("/api/v1/feed/comment/reply",  Feed_Comment_Reply_Router);
+app.use("/api/v1/feed/bookmarks",      Feed_Bookmark_Router);
+app.use("/api/v1/feed/repost",         Feed_Repost_Router);
+app.use("/api/v1/feed/share",          Feed_Share_Router);
 
 // -- Ecommerce
-app.use("/api/v1/ecommerce/categories", categoryRouter);
-app.use("/api/v1/ecommerce/addresses",  addressRouter);
-app.use("/api/v1/ecommerce/productSs",  productRouter);
-app.use("/api/v1/ecommerce/profile",    ecomProfileRouter);
-app.use("/api/v1/ecommerce/cart",       cartRouter);
-app.use("/api/v1/ecommerce/orders",     orderRouter);
-app.use("/api/v1/ecommerce/coupons",    couponRouter);
+app.use("/api/v1/ecommerce/categories", Category_Router);
+app.use("/api/v1/ecommerce/addresses",  Address_Router);
+app.use("/api/v1/ecommerce/productSs",  Product_Router);
+app.use("/api/v1/ecommerce/profile",    Ecom_Profile_Router);
+app.use("/api/v1/ecommerce/cart",       Cart_Router);
+app.use("/api/v1/ecommerce/orders",     Order_Router);
+app.use("/api/v1/ecommerce/coupons",    Coupon_Router);
 
 // -- Social Media / Shorts
-app.use("/api/v1/social-media/block",         socialBlockRouter);
-app.use("/api/v1/social-media/profile",       socialProfileRouter);
-app.use("/api/v1/social-media/follow",        socialFollowRouter);
-app.use("/api/v1/social-media/posts",         socialPostRouter);
-app.use("/api/v1/social-media/likes",         socialLikeRouter);
-app.use("/api/v1/social-media/bookmarks",     socialBookmarkRouter);
-app.use("/api/v1/social-media/comments",      socialCommentRouter);
-app.use("/api/v1/social-media/comment/reply", socialCommentReplyRouter);
-app.use("/api/v1/social-media/profile",       userFollowingShowMoreOptionsRouter);
-app.use("/api/v1/social-media/reposts",       socialRepostRouter);
-app.use("/api/v1/social-media/shares",        socialShareRouter);
+app.use("/api/v1/social-media/block",         Social_Block_Router);
+app.use("/api/v1/social-media/profile",       Social_Profile_Router);
+app.use("/api/v1/social-media/follow",        Social_Follow_Router);
+app.use("/api/v1/social-media/posts",         Social_Post_Router);
+app.use("/api/v1/social-media/likes",         Social_Like_Router);
+app.use("/api/v1/social-media/bookmarks",     Social_Bookmark_Router);
+app.use("/api/v1/social-media/comments",      Social_Comment_Router);
+app.use("/api/v1/social-media/comment/reply", Social_Comment_Reply_Router);
+app.use("/api/v1/social-media/profile",       User_Following_Show_More_Options_Router);
+app.use("/api/v1/social-media/reposts",       Social_Repost_Router);
+app.use("/api/v1/social-media/shares",        Social_Share_Router);
 
 // -- Chat App
-app.use("/api/v1/chat-app/chats",    chatRouter);
-app.use("/api/v1/chat-app/messages", messageRouter);
+app.use("/api/v1/chat-app/chats",    Chat_Router);
+app.use("/api/v1/chat-app/messages", Message_Router);
 
 // -- Todos
-app.use("/api/v1/todos", todoRouter);
+app.use("/api/v1/todos", Todo_Router);
 
 // -- Kitchen Sink (Testing/Utility APIs)
-app.use("/api/v1/kitchen-sink/http-methods",  httpmethodRouter);
-app.use("/api/v1/kitchen-sink/status-codes",  statuscodeRouter);
-app.use("/api/v1/kitchen-sink/request",       requestinspectionRouter);
-app.use("/api/v1/kitchen-sink/response",      responseinspectionRouter);
-app.use("/api/v1/kitchen-sink/cookies",       cookieRouter);
-app.use("/api/v1/kitchen-sink/redirect",      redirectRouter);
-app.use("/api/v1/kitchen-sink/image",         imageRouter);
+app.use("/api/v1/kitchen-sink/http-methods",  Http_Method_Router);
+app.use("/api/v1/kitchen-sink/status-codes",  Status_Code_Router);
+app.use("/api/v1/kitchen-sink/request",       Request_Inspection_Router);
+app.use("/api/v1/kitchen-sink/response",      Response_Inspection_Router);
+app.use("/api/v1/kitchen-sink/cookies",       Cookie_Router);
+app.use("/api/v1/kitchen-sink/redirect",      Redirect_Router);
+app.use("/api/v1/kitchen-sink/image",         Image_Router);
 
 // -- User Location
-app.use("/api/v1/userlocation", userLocationRouter);
+app.use("/api/v1/userlocation", User_Location_Router);
 
 // -- Recommendation Events
-app.use("/api/v1/recommendations/events", recomendationEventsRouter);
+app.use("/api/v1/recommendations/events", Recomendation_Events_Router);
 
 // ============================================================
 // SEEDING ENDPOINTS
@@ -335,7 +335,7 @@ app.post("/api/v1/seed/social-media", seedUsers, seedSocialMedia);
 app.post("/api/v1/seed/chat-app",     seedUsers, seedChatApp);
 
 // ============================================================
-//  SOCKET.IO INITIALIZATION
+// SOCKET.IO INITIALIZATION
 // ============================================================
 // initializeSocketIO(io);  // Alternative socket init (commented out)
 initializeSocket(io);
@@ -358,13 +358,13 @@ app.delete("/api/v1/reset-db", async (req, res) => {
     const directory = "./public/images";
 
     // Remove all product images from the filesystem
-    fs.readdir(directory, (err, files) => {
+    Fs.readdir(directory, (err, files) => {
       if (err) {
         console.log("Error while removing the images: ", err);
       } else {
         for (const file of files) {
           if (file === ".gitkeep") continue; // Preserve .gitkeep placeholder
-          fs.unlink(path.join(directory, file), (err) => {
+          Fs.unlink(Path.join(directory, file), (err) => {
             if (err) throw err;
           });
         }
@@ -372,7 +372,7 @@ app.delete("/api/v1/reset-db", async (req, res) => {
     });
 
     // Remove the seeded credentials file if it exists
-    fs.unlink("./public/temp/seed-credentials.json", (err) => {
+    Fs.unlink("./public/temp/seed-credentials.json", (err) => {
       if (err) console.log("Seed credentials are missing.");
     });
 
@@ -397,13 +397,13 @@ app.delete("/api/v1/reset-feedposts", async (req, res) => {
       const directory = "./public/images";
 
       // Remove associated image files
-      fs.readdir(directory, (err, files) => {
+      Fs.readdir(directory, (err, files) => {
         if (err) {
           console.log("Error while removing the images: ", err);
         } else {
           files.forEach((file) => {
             if (file !== ".gitkeep") {
-              fs.unlink(path.join(directory, file), (err) => {
+              Fs.unlink(Path.join(directory, file), (err) => {
                 if (err) throw err;
               });
             }
@@ -412,7 +412,7 @@ app.delete("/api/v1/reset-feedposts", async (req, res) => {
       });
 
       // Remove feedpost seed credentials file
-      fs.unlink("./public/temp/feedpost-seed-credentials.json", (err) => {
+      Fs.unlink("./public/temp/feedpost-seed-credentials.json", (err) => {
         if (err) console.log("Feedpost seed credentials are missing.");
       });
 
@@ -445,13 +445,13 @@ app.delete("/api/v1/social-media/posts/reset-posts", async (req, res) => {
       const directory = "./public/images";
 
       // Remove associated image files
-      fs.readdir(directory, (err, files) => {
+      Fs.readdir(directory, (err, files) => {
         if (err) {
           console.log("Error while removing the images: ", err);
         } else {
           files.forEach((file) => {
             if (file !== ".gitkeep") {
-              fs.unlink(path.join(directory, file), (err) => {
+              Fs.unlink(Path.join(directory, file), (err) => {
                 if (err) throw err;
               });
             }
@@ -460,7 +460,7 @@ app.delete("/api/v1/social-media/posts/reset-posts", async (req, res) => {
       });
 
       // Remove social post seed credentials file
-      fs.unlink("./public/temp/Post-seed-credentials.json", (err) => {
+      Fs.unlink("./public/temp/Post-seed-credentials.json", (err) => {
         if (err) console.log("Post seed credentials are missing.");
       });
 
@@ -485,8 +485,8 @@ app.delete("/api/v1/social-media/posts/reset-posts", async (req, res) => {
 // ============================================================
 app.use(
   "/",
-  swaggerUi.serve,
-  swaggerUi.setup(swaggerDocument, {
+  Swagger_Ui.serve,
+  Swagger_Ui.setup(swaggerDocument, {
     swaggerOptions: {
       docExpansion: "none", // Keep all sections collapsed by default
     },
@@ -495,7 +495,7 @@ app.use(
 );
 
 // ============================================================
-//  GLOBAL ERROR HANDLER (must be last middleware)
+// GLOBAL ERROR HANDLER (must be last middleware)
 // ============================================================
 app.use(errorHandler);
 
