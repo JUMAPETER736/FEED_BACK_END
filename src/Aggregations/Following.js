@@ -1,4 +1,4 @@
-const unifiedFollowingAggregation = (req) => {
+const FollowingAggregation = (req) => {
     return [
         {
               $lookup: {
@@ -91,5 +91,5 @@ const unifiedFollowingAggregation = (req) => {
 
 
 export {
-    unifiedFollowingAggregation
+    FollowingAggregation
 }

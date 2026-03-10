@@ -1,4 +1,5 @@
-const followersAggregation = (req) => {
+
+const FollowersAggregation = (req) => {
     return [
          // Now we have all the follow documents where current user is followee (who is being followed)
             {
@@ -94,5 +95,5 @@ const followersAggregation = (req) => {
 };
 
 export {
-    followersAggregation
+    FollowersAggregation
 }

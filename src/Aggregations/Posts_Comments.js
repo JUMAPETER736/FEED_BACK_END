@@ -1,4 +1,4 @@
-const unifiedGetPostCommentAggregation = (req) => {
+const Posts_CommentsAggregation = (req) => {
     return [
       {
             $lookup: {
@@ -101,5 +101,5 @@ const unifiedGetPostCommentAggregation = (req) => {
 
 
 export {
-    unifiedGetPostCommentAggregation
+    Posts_CommentsAggregation
 }

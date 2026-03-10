@@ -1,4 +1,4 @@
-const unifiedNotificationCommonAggregation = () => {
+const NotificationAggregation = () => {
   return [
     {
       $lookup: {
@@ -26,6 +26,6 @@ const unifiedNotificationCommonAggregation = () => {
  };
 
  export {
-    unifiedNotificationCommonAggregation
+    NotificationAggregation
  };
  

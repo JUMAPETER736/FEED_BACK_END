@@ -1,6 +1,7 @@
-const FollowingListAggregation = () => {
+const UserAggregation = ()=> {
     return [
         {
+            
       $lookup: {
         // lookup for the each user's profile
         from: "socialprofiles",
@@ -33,11 +34,10 @@ const FollowingListAggregation = () => {
         avatar: 1,
         profile: 1,
       },
-    },
-    ];
+    }
+   ];
 };
 
-
 export {
-    FollowingListAggregation
+    UserAggregation
 }
