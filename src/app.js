@@ -1,3 +1,6 @@
+// ============================================================
+// CORE DEPENDENCIES
+// ============================================================
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";
@@ -12,6 +15,10 @@ import { Server } from "socket.io";
 import swaggerUi from "swagger-ui-express";
 import { fileURLToPath } from "url";
 import YAML from "yaml";
+
+// ============================================================
+// DATABASE & INTERNAL UTILITIES
+// ============================================================
 import { DB_NAME } from "./constants.js";
 import { dbInstance } from "./db/index.js";
 import {
@@ -22,16 +29,27 @@ import {
 import { ApiError } from "./utils/ApiError.js";
 import { ApiResponse } from "./utils/ApiResponse.js";
 
+// ============================================================
+//  FILE PATH SETUP (ESM __dirname equivalent)
+// ============================================================
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// ============================================================
+//  SWAGGER DOCUMENTATION SETUP
+// ============================================================
 const file = fs.readFileSync(path.resolve(__dirname, "./swagger.yaml"), "utf8");
 const swaggerDocument = YAML.parse(file);
 
+// ============================================================
+// APP & HTTP SERVER INITIALIZATION
+// ============================================================
 const app = express();
-
 const httpServer = createServer(app);
 
+// ============================================================
+// 🔌 SOCKET.IO SETUP
+// ============================================================
 const io = new Server(httpServer, {
   pingTimeout: 60000,
   cors: {
@@ -40,12 +58,15 @@ const io = new Server(httpServer, {
   },
 });
 
-// Store the io instance globally
+// Store the io instance globally and on app
 global.io = io;
+app.set("io", io); // Preferred over global — avoids polluting the global scope
 
-app.set("io", io); // using set method to mount the `io` instance on the app to avoid usage of `global`
+// ============================================================
+// GLOBAL MIDDLEWARES
+// ============================================================
 
-// global middlewares
+// -- CORS: Allow requests from specified origin
 app.use(
   cors({
     origin: process.env.CORS_ORIGIN,
@@ -53,256 +74,308 @@ app.use(
   })
 );
 
-// Rate limiter to avoid misuse of the service and avoid cost spikes
+// -- RATE LIMITER: Prevent abuse and excessive cost spikes
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5000, // Limit each IP to 500 requests per `window` (here, per 15 minutes)
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  windowMs: 15 * 60 * 1000,  // 15-minute window
+  max: 5000,                  // Max 5000 requests per window per IP
+  standardHeaders: true,      // Include RateLimit-* headers in response
+  legacyHeaders: false,       // Disable X-RateLimit-* legacy headers
   handler: (_, __, ___, options) => {
     throw new ApiError(
       options.statusCode || 500,
-      `There are too many requests. You are only allowed ${options.max
-      } requests per ${options.windowMs / 60000} minutes`
+      `There are too many requests. You are only allowed ${options.max} requests per ${options.windowMs / 60000} minutes`
     );
   },
 });
-
-// Apply the rate limiting middleware to all requests
 app.use(limiter);
 
+// -- BODY PARSERS: Handle JSON, URL-encoded, and static files
 app.use(express.json({ limit: "16kb" }));
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
-app.use(express.static("public")); // configure static file to save images locally
+app.use(express.static("public")); // Serve static files (e.g., images) from /public
 app.use(cookieParser());
-app.use(bodyParser.json()); // For JSON payloads
+app.use(bodyParser.json()); // Parse JSON payloads
 
-// required for passport
+// -- SESSION & PASSPORT: Authentication support
 app.use(
   session({
     secret: process.env.EXPRESS_SESSION_SECRET,
     resave: true,
     saveUninitialized: true,
   })
-); // session secret
+);
 app.use(passport.initialize());
-app.use(passport.session()); // persistent login sessions
+app.use(passport.session()); // Enable persistent login sessions
 
-// api routes
+// ============================================================
+// ERROR HANDLING MIDDLEWARE
+// ============================================================
 import { errorHandler } from "./middlewares/error.middlewares.js";
+
+// ============================================================
+//  HEALTHCHECK ROUTE
+// ============================================================
 import healthcheckRouter from "./routes/healthcheck.routes.js";
 
-// * Public routes
-import bookRouter from "./routes/public/book.routes.js";
-import catRouter from "./routes/public/cat.routes.js";
-import dogRouter from "./routes/public/dog.routes.js";
-import mealRouter from "./routes/public/meal.routes.js";
-import quoteRouter from "./routes/public/quote.routes.js";
-import randomjokeRouter from "./routes/public/randomjoke.routes.js";
+// ============================================================
+// PUBLIC API ROUTES (No auth required)
+// ============================================================
+import bookRouter          from "./routes/public/book.routes.js";
+import catRouter           from "./routes/public/cat.routes.js";
+import dogRouter           from "./routes/public/dog.routes.js";
+import mealRouter          from "./routes/public/meal.routes.js";
+import quoteRouter         from "./routes/public/quote.routes.js";
+import randomjokeRouter    from "./routes/public/randomjoke.routes.js";
 import randomproductRouter from "./routes/public/randomproduct.routes.js";
-import randomuserRouter from "./routes/public/randomuser.routes.js";
-import youtubeRouter from "./routes/public/youtube.routes.js";
+import randomuserRouter    from "./routes/public/randomuser.routes.js";
+import youtubeRouter       from "./routes/public/youtube.routes.js";
 
-// * App routes
-import userRouter from "./routes/apps/auth/user.routes.js";
-// const userRoutes = require("./routes/userRoutes")
-// import userRouter from "./routes/userRoutes.js"
-import userRoutes from "./routes/userRoutes.js";
-import userLocationRouter from "./routes/location/user.location.route.js"
+// ============================================================
+// USER & AUTHENTICATION ROUTES
+// ============================================================
+import userRouter         from "./routes/apps/auth/user.routes.js";
+import userRoutes         from "./routes/userRoutes.js";
+import userLocationRouter from "./routes/location/user.location.route.js";
 
-import businessRouter from "./routes/apps/business/profile.routes.js";
-import catalogueRouter from "./routes/apps/business/catalogue.routes.js";
-import businessPostRouter from "./routes/apps/business/business.post.routes.js";
-import businessPostLikesRouter from "./routes/apps/business/businesspost/business.post.like.routes.js";
-import businessPostCommentsRouter from "./routes/apps/business/businesspost/business.post.comment.routes.js";
-import businessPostCommentReplyRouter from "./routes/apps/business/businesspost/business.post.comment.reply.routes.js";
-import businessPostBookmarkRouter from "./routes/apps/business/businesspost/business.post.bookmark.routes.js";
-import businessNotificationRouter from "./routes/apps/notifications/business.notification.routes.js";
-//gif router
-import gifRouter from "./routes/apps/gif/gif.route.js";
+// ============================================================
+// BUSINESS ROUTES
+// ============================================================
+import businessRouter                  from "./routes/apps/business/profile.routes.js";
+import catalogueRouter                 from "./routes/apps/business/catalogue.routes.js";
+import businessPostRouter              from "./routes/apps/business/business.post.routes.js";
+import businessPostLikesRouter         from "./routes/apps/business/businesspost/business.post.like.routes.js";
+import businessPostCommentsRouter      from "./routes/apps/business/businesspost/business.post.comment.routes.js";
+import businessPostCommentReplyRouter  from "./routes/apps/business/businesspost/business.post.comment.reply.routes.js";
+import businessPostBookmarkRouter      from "./routes/apps/business/businesspost/business.post.bookmark.routes.js";
+import businessNotificationRouter      from "./routes/apps/notifications/business.notification.routes.js";
 
+// ============================================================
+// NOTIFICATION ROUTES
+// ============================================================
 import notificationRouter from "./routes/apps/notifications/notification.routes.js";
 
-// notifiCATIONS
+// ============================================================
+// GIF ROUTES
+// ============================================================
+import gifRouter from "./routes/apps/gif/gif.route.js";
 
-import addressRouter from "./routes/apps/ecommerce/address.routes.js";
-import cartRouter from "./routes/apps/ecommerce/cart.routes.js";
-import categoryRouter from "./routes/apps/ecommerce/category.routes.js";
-import couponRouter from "./routes/apps/ecommerce/coupon.routes.js";
-import orderRouter from "./routes/apps/ecommerce/order.routes.js";
-import productRouter from "./routes/apps/ecommerce/product.routes.js";
+// ============================================================
+// ECOMMERCE ROUTES
+// ============================================================
+import addressRouter    from "./routes/apps/ecommerce/address.routes.js";
+import cartRouter       from "./routes/apps/ecommerce/cart.routes.js";
+import categoryRouter   from "./routes/apps/ecommerce/category.routes.js";
+import couponRouter     from "./routes/apps/ecommerce/coupon.routes.js";
+import orderRouter      from "./routes/apps/ecommerce/order.routes.js";
+import productRouter    from "./routes/apps/ecommerce/product.routes.js";
 import ecomProfileRouter from "./routes/apps/ecommerce/profile.routes.js";
 
+// ============================================================
+// SOCIAL MEDIA / SHORTS ROUTES
+// ============================================================
+import socialBlockRouter                    from "./routes/apps/social-media/block.routes.js";
+import socialBookmarkRouter                 from "./routes/apps/social-media/bookmark.routes.js";
+import socialCommentRouter                  from "./routes/apps/social-media/comment.routes.js";
+import socialCommentReplyRouter             from "./routes/apps/social-media/comment.reply.routes.js";
+import socialFollowRouter                   from "./routes/apps/social-media/follow.routes.js";
+import socialLikeRouter                     from "./routes/apps/social-media/like.routes.js";
+import socialPostRouter                     from "./routes/apps/social-media/post.routes.js";
+import socialProfileRouter                  from "./routes/apps/social-media/profile.routes.js";
+import userFollowingShowMoreOptionsRouter   from "./routes/apps/social-media/userFollowingShowMoreOptions.routes.js";
+import socialRepostRouter                   from "./routes/apps/social-media/repost.routes.js";
+import socialShareRouter                    from "./routes/apps/social-media/share.routes.js";
 
-// For the  Shorts
-import socialBlockRouter from "./routes/apps/social-media/block.routes.js";
-import socialBookmarkRouter from "./routes/apps/social-media/bookmark.routes.js";
-import socialCommentRouter from "./routes/apps/social-media/comment.routes.js";
-import socialCommentReplyRouter from "./routes/apps/social-media/comment.reply.routes.js";
-import socialFollowRouter from "./routes/apps/social-media/follow.routes.js";
-import socialLikeRouter from "./routes/apps/social-media/like.routes.js";
-import socialPostRouter from "./routes/apps/social-media/post.routes.js";
-import socialProfileRouter from "./routes/apps/social-media/profile.routes.js";
-import userFollowingShowMoreOptionsRouter from "./routes/apps/social-media/userFollowingShowMoreOptions.routes.js";
-import socialRepostRouter from "./routes/apps/social-media/repost.routes.js";
-import socialShareRouter from "./routes/apps/social-media/share.routes.js";
-
-// for logging user events to recommendation system
-import recomendationEventsRouter  from "./routes/apps/events/events.routes.js";
-
-
-// For the Feed Post
-import feedRouter from "./routes/apps/feed/feed.routes.js";
-import feedLikeRouter from "./routes/apps/feed/feed_like.routes.js";
-import feedCommentRouter from "./routes/apps/feed/feed_comment.routes.js";
+// ============================================================
+// FEED POST ROUTES
+// ============================================================
+import feedRouter             from "./routes/apps/feed/feed.routes.js";
+import feedLikeRouter         from "./routes/apps/feed/feed_like.routes.js";
+import feedCommentRouter      from "./routes/apps/feed/feed_comment.routes.js";
 import feedCommentReplyRouter from "./routes/apps/feed/feed_comment.reply.routes.js";
-import feedBookmarkRouter from "./routes/apps/feed/feed_bookmark.routes.js";
-import feedRepostRouter from "./routes/apps/feed/feed_repost.routes.js";
-import feedShareRouter from "./routes/apps/feed/feed_share.routes.js";
-import feedFollowedRouter from "./routes/apps/feed/feed_followUnfollow.routes.js";
+import feedBookmarkRouter     from "./routes/apps/feed/feed_bookmark.routes.js";
+import feedRepostRouter       from "./routes/apps/feed/feed_repost.routes.js";
+import feedShareRouter        from "./routes/apps/feed/feed_share.routes.js";
+import feedFollowedRouter     from "./routes/apps/feed/feed_followUnfollow.routes.js";
 
+// ============================================================
+//  RECOMMENDATION / EVENTS ROUTES
+// ============================================================
+import recomendationEventsRouter from "./routes/apps/events/events.routes.js";
 
-import chatRouter from "./routes/apps/chat-app/chat.routes.js";
+// ============================================================
+//  CHAT APP ROUTES
+// ============================================================
+import chatRouter    from "./routes/apps/chat-app/chat.routes.js";
 import messageRouter from "./routes/apps/chat-app/message.routes.js";
 
+// ============================================================
+// TODO ROUTES
+// ============================================================
 import todoRouter from "./routes/apps/todo/todo.routes.js";
 
-// * Kitchen sink routes
-import cookieRouter from "./routes/kitchen-sink/cookie.routes.js";
-import httpmethodRouter from "./routes/kitchen-sink/httpmethod.routes.js";
-import imageRouter from "./routes/kitchen-sink/image.routes.js";
-import redirectRouter from "./routes/kitchen-sink/redirect.routes.js";
-import requestinspectionRouter from "./routes/kitchen-sink/requestinspection.routes.js";
+// ============================================================
+// KITCHEN SINK ROUTES (Testing/Utility)
+// ============================================================
+import cookieRouter             from "./routes/kitchen-sink/cookie.routes.js";
+import httpmethodRouter         from "./routes/kitchen-sink/httpmethod.routes.js";
+import imageRouter              from "./routes/kitchen-sink/image.routes.js";
+import redirectRouter           from "./routes/kitchen-sink/redirect.routes.js";
+import requestinspectionRouter  from "./routes/kitchen-sink/requestinspection.routes.js";
 import responseinspectionRouter from "./routes/kitchen-sink/responseinspection.routes.js";
-import statuscodeRouter from "./routes/kitchen-sink/statuscode.routes.js";
+import statuscodeRouter         from "./routes/kitchen-sink/statuscode.routes.js";
 
-// * Seeding handlers
-import { seedChatApp } from "./seeds/chat-app.seeds.js";
-import { seedEcommerce } from "./seeds/ecommerce.seeds.js";
-import { seedSocialMedia } from "./seeds/social-media.seeds.js";
-import { seedTodos } from "./seeds/todo.seeds.js";
+// ============================================================
+//  DATABASE SEEDING HANDLERS
+// ============================================================
+import { seedChatApp }                        from "./seeds/chat-app.seeds.js";
+import { seedEcommerce }                      from "./seeds/ecommerce.seeds.js";
+import { seedSocialMedia }                    from "./seeds/social-media.seeds.js";
+import { seedTodos }                          from "./seeds/todo.seeds.js";
 import { getGeneratedCredentials, seedUsers } from "./seeds/user.seeds.js";
 
-// * healthcheck
+// ============================================================
+// ROUTE MOUNTING
+// ============================================================
+
+// -- Healthcheck
 app.use("/api/v1/healthcheck", healthcheckRouter);
 
-// * Public apis
-// TODO: More functionality specific to the type of api, can be added in the future
-app.use("/api/v1/public/randomusers", randomuserRouter);
+// -- Public APIs (no auth required)
+app.use("/api/v1/public/randomusers",    randomuserRouter);
 app.use("/api/v1/public/randomproducts", randomproductRouter);
-app.use("/api/v1/public/randomjokes", randomjokeRouter);
-app.use("/api/v1/public/books", bookRouter);
-app.use("/api/v1/public/quotes", quoteRouter);
-app.use("/api/v1/public/meals", mealRouter);
-app.use("/api/v1/public/dogs", dogRouter);
-app.use("/api/v1/public/cats", catRouter);
-app.use("/api/v1/public/youtube", youtubeRouter);
-// * App apis
+app.use("/api/v1/public/randomjokes",    randomjokeRouter);
+app.use("/api/v1/public/books",          bookRouter);
+app.use("/api/v1/public/quotes",         quoteRouter);
+app.use("/api/v1/public/meals",          mealRouter);
+app.use("/api/v1/public/dogs",           dogRouter);
+app.use("/api/v1/public/cats",           catRouter);
+app.use("/api/v1/public/youtube",        youtubeRouter);
+
+// -- User & Auth
 app.use("/api/v1/users", userRouter);
-app.use("/users", userRoutes);
-app.use("/api/v1/notifications", notificationRouter);
-app.use("/api/v1/business/profile", businessRouter);
-app.use("/api/v1/business/catalogue", catalogueRouter);
-app.use("/api/v1/business/product-posts", businessPostRouter);
-app.use("/api/v1/business/product-posts/likes", businessPostLikesRouter);
-app.use("/api/v1/business/product-posts/comments", businessPostCommentsRouter);
+app.use("/users",        userRoutes);
+
+// -- Notifications
+app.use("/api/v1/notifications",            notificationRouter);
+app.use("/api/v1/business/notifications",   businessNotificationRouter);
+
+// -- Business
+app.use("/api/v1/business/profile",                      businessRouter);
+app.use("/api/v1/business/catalogue",                    catalogueRouter);
+app.use("/api/v1/business/product-posts",                businessPostRouter);
+app.use("/api/v1/business/product-posts/likes",          businessPostLikesRouter);
+app.use("/api/v1/business/product-posts/comments",       businessPostCommentsRouter);
 app.use("/api/v1/business/product-posts/comments/replies", businessPostCommentReplyRouter);
-app.use("/api/v1/business/products-posts/bookmarks", businessPostBookmarkRouter);
-app.use("/api/v1/business/notifications", businessNotificationRouter);
+app.use("/api/v1/business/products-posts/bookmarks",     businessPostBookmarkRouter);
+
+// -- GIF
 app.use("/api/v1/gif", gifRouter);
 
-// For the Feed Post
-app.use("/api/v1/feed/followed", feedFollowedRouter);
-app.use("/api/v1/feed/post", feedRouter);
-app.use("/api/v1/feed/likes", feedLikeRouter);
-app.use("/api/v1/feed/comments", feedCommentRouter);
-app.use("/api/v1/feed/comment/reply", feedCommentReplyRouter);
-app.use("/api/v1/feed/bookmarks", feedBookmarkRouter);
-app.use("/api/v1/feed/repost", feedRepostRouter);
-app.use("/api/v1/feed/share", feedShareRouter);
+// -- Feed Posts
+app.use("/api/v1/feed/followed",       feedFollowedRouter);
+app.use("/api/v1/feed/post",           feedRouter);
+app.use("/api/v1/feed/likes",          feedLikeRouter);
+app.use("/api/v1/feed/comments",       feedCommentRouter);
+app.use("/api/v1/feed/comment/reply",  feedCommentReplyRouter);
+app.use("/api/v1/feed/bookmarks",      feedBookmarkRouter);
+app.use("/api/v1/feed/repost",         feedRepostRouter);
+app.use("/api/v1/feed/share",          feedShareRouter);
 
+// -- Ecommerce
 app.use("/api/v1/ecommerce/categories", categoryRouter);
-app.use("/api/v1/ecommerce/addresses", addressRouter);
-app.use("/api/v1/ecommerce/productSs", productRouter);
-app.use("/api/v1/ecommerce/profile", ecomProfileRouter);
-app.use("/api/v1/ecommerce/cart", cartRouter);
-app.use("/api/v1/ecommerce/orders", orderRouter);
-app.use("/api/v1/ecommerce/coupons", couponRouter);
+app.use("/api/v1/ecommerce/addresses",  addressRouter);
+app.use("/api/v1/ecommerce/productSs",  productRouter);
+app.use("/api/v1/ecommerce/profile",    ecomProfileRouter);
+app.use("/api/v1/ecommerce/cart",       cartRouter);
+app.use("/api/v1/ecommerce/orders",     orderRouter);
+app.use("/api/v1/ecommerce/coupons",    couponRouter);
 
-app.use("/api/v1/social-media/block", socialBlockRouter);
-app.use("/api/v1/social-media/profile", socialProfileRouter);
-app.use("/api/v1/social-media/follow", socialFollowRouter);
-app.use("/api/v1/social-media/posts", socialPostRouter);
-app.use("/api/v1/social-media/likes", socialLikeRouter);
-app.use("/api/v1/social-media/bookmarks", socialBookmarkRouter);
-app.use("/api/v1/social-media/comments", socialCommentRouter);
+// -- Social Media / Shorts
+app.use("/api/v1/social-media/block",         socialBlockRouter);
+app.use("/api/v1/social-media/profile",       socialProfileRouter);
+app.use("/api/v1/social-media/follow",        socialFollowRouter);
+app.use("/api/v1/social-media/posts",         socialPostRouter);
+app.use("/api/v1/social-media/likes",         socialLikeRouter);
+app.use("/api/v1/social-media/bookmarks",     socialBookmarkRouter);
+app.use("/api/v1/social-media/comments",      socialCommentRouter);
 app.use("/api/v1/social-media/comment/reply", socialCommentReplyRouter);
-app.use("/api/v1/social-media/profile", userFollowingShowMoreOptionsRouter);
-app.use("/api/v1/social-media/reposts",   socialRepostRouter);
-app.use("/api/v1/social-media/shares",    socialShareRouter);
+app.use("/api/v1/social-media/profile",       userFollowingShowMoreOptionsRouter);
+app.use("/api/v1/social-media/reposts",       socialRepostRouter);
+app.use("/api/v1/social-media/shares",        socialShareRouter);
 
-
-app.use("/api/v1/chat-app/chats", chatRouter);
+// -- Chat App
+app.use("/api/v1/chat-app/chats",    chatRouter);
 app.use("/api/v1/chat-app/messages", messageRouter);
 
+// -- Todos
 app.use("/api/v1/todos", todoRouter);
 
-// * Kitchen sink apis
-app.use("/api/v1/kitchen-sink/http-methods", httpmethodRouter);
-app.use("/api/v1/kitchen-sink/status-codes", statuscodeRouter);
-app.use("/api/v1/kitchen-sink/request", requestinspectionRouter);
-app.use("/api/v1/kitchen-sink/response", responseinspectionRouter);
-app.use("/api/v1/kitchen-sink/cookies", cookieRouter);
-app.use("/api/v1/kitchen-sink/redirect", redirectRouter);
-app.use("/api/v1/kitchen-sink/image", imageRouter);
+// -- Kitchen Sink (Testing/Utility APIs)
+app.use("/api/v1/kitchen-sink/http-methods",  httpmethodRouter);
+app.use("/api/v1/kitchen-sink/status-codes",  statuscodeRouter);
+app.use("/api/v1/kitchen-sink/request",       requestinspectionRouter);
+app.use("/api/v1/kitchen-sink/response",      responseinspectionRouter);
+app.use("/api/v1/kitchen-sink/cookies",       cookieRouter);
+app.use("/api/v1/kitchen-sink/redirect",      redirectRouter);
+app.use("/api/v1/kitchen-sink/image",         imageRouter);
 
-// * Seeding
-app.get("/api/v1/seed/generated-credentials", getGeneratedCredentials);
-app.post("/api/v1/seed/todos", seedTodos);
-app.post("/api/v1/seed/ecommerce", seedUsers, seedEcommerce);
-app.post("/api/v1/seed/social-media", seedUsers, seedSocialMedia);
-app.post("/api/v1/seed/chat-app", seedUsers, seedChatApp);
-
-//user location routes
+// -- User Location
 app.use("/api/v1/userlocation", userLocationRouter);
 
+// -- Recommendation Events
 app.use("/api/v1/recommendations/events", recomendationEventsRouter);
 
+// ============================================================
+// SEEDING ENDPOINTS
+// ============================================================
+app.get("/api/v1/seed/generated-credentials", getGeneratedCredentials);
+app.post("/api/v1/seed/todos",        seedTodos);
+app.post("/api/v1/seed/ecommerce",    seedUsers, seedEcommerce);
+app.post("/api/v1/seed/social-media", seedUsers, seedSocialMedia);
+app.post("/api/v1/seed/chat-app",     seedUsers, seedChatApp);
 
-
-// initializeSocketIO(io);
+// ============================================================
+//  SOCKET.IO INITIALIZATION
+// ============================================================
+// initializeSocketIO(io);  // Alternative socket init (commented out)
 initializeSocket(io);
-// initializeSocketIOT(io);
+// initializeSocketIOT(io); // Alternative socket init (commented out)
 
-// ! 🚫 Danger Zone
+// ============================================================
+// DANGER ZONE — Database Reset Endpoints
+// ============================================================
+
+/**
+ * DELETE /api/v1/reset-db
+ * Drops the ENTIRE database and clears all images and seed files.
+ * Use with extreme caution — this is irreversible!
+ */
 app.delete("/api/v1/reset-db", async (req, res) => {
   if (dbInstance) {
-    // Drop the whole DB
-    await dbInstance.connection.db.dropDatabase({
-      dbName: DB_NAME,
-    });
+    // Drop the entire database
+    await dbInstance.connection.db.dropDatabase({ dbName: DB_NAME });
 
     const directory = "./public/images";
 
-    // Remove all product images from the file system
+    // Remove all product images from the filesystem
     fs.readdir(directory, (err, files) => {
       if (err) {
-        // fail silently
         console.log("Error while removing the images: ", err);
       } else {
         for (const file of files) {
-          if (file === ".gitkeep") continue;
+          if (file === ".gitkeep") continue; // Preserve .gitkeep placeholder
           fs.unlink(path.join(directory, file), (err) => {
             if (err) throw err;
           });
         }
       }
     });
-    // remove the seeded users if exist
+
+    // Remove the seeded credentials file if it exists
     fs.unlink("./public/temp/seed-credentials.json", (err) => {
-      // fail silently
       if (err) console.log("Seed credentials are missing.");
     });
+
     return res
       .status(200)
       .json(new ApiResponse(200, null, "Database dropped successfully"));
@@ -310,15 +383,20 @@ app.delete("/api/v1/reset-db", async (req, res) => {
   throw new ApiError(500, "Something went wrong while dropping the database");
 });
 
-
+/**
+ * DELETE /api/v1/reset-feedposts
+ * Drops only the 'feedposts' collection and cleans up related files.
+ * This is irreversible for all feed post data!
+ */
 app.delete("/api/v1/reset-feedposts", async (req, res) => {
   if (dbInstance) {
     try {
-      // Drop the 'feedposts' collection using mongoose
-      await dbInstance.connection.dropCollection('feedposts');
+      // Drop only the feedposts collection
+      await dbInstance.connection.dropCollection("feedposts");
 
-      // Optionally, remove associated files (if needed)
       const directory = "./public/images";
+
+      // Remove associated image files
       fs.readdir(directory, (err, files) => {
         if (err) {
           console.log("Error while removing the images: ", err);
@@ -333,29 +411,40 @@ app.delete("/api/v1/reset-feedposts", async (req, res) => {
         }
       });
 
-      // Clean up any other relevant files related to feedposts
+      // Remove feedpost seed credentials file
       fs.unlink("./public/temp/feedpost-seed-credentials.json", (err) => {
         if (err) console.log("Feedpost seed credentials are missing.");
       });
 
-      return res.status(200).json(new ApiResponse(200, null, "Feedposts table dropped successfully"));
+      return res
+        .status(200)
+        .json(new ApiResponse(200, null, "Feedposts table dropped successfully"));
     } catch (error) {
       console.error("Error dropping the feedposts table: ", error);
-      return res.status(500).json(new ApiError(500, "Something went wrong while dropping the feedposts table"));
+      return res
+        .status(500)
+        .json(new ApiError(500, "Something went wrong while dropping the feedposts table"));
     }
   }
-  return res.status(500).json(new ApiError(500, "Database connection is missing"));
+  return res
+    .status(500)
+    .json(new ApiError(500, "Database connection is missing"));
 });
 
-
+/**
+ * DELETE /api/v1/social-media/posts/reset-posts
+ * Drops only the 'socialposts' collection and cleans up related files.
+ * This is irreversible for all social post data!
+ */
 app.delete("/api/v1/social-media/posts/reset-posts", async (req, res) => {
   if (dbInstance) {
     try {
-      // Drop the 'feedposts' collection using mongoose
-      await dbInstance.connection.dropCollection('socialposts');
+      // Drop only the socialposts collection
+      await dbInstance.connection.dropCollection("socialposts");
 
-      // Optionally, remove associated files (if needed)
       const directory = "./public/images";
+
+      // Remove associated image files
       fs.readdir(directory, (err, files) => {
         if (err) {
           console.log("Error while removing the images: ", err);
@@ -370,33 +459,44 @@ app.delete("/api/v1/social-media/posts/reset-posts", async (req, res) => {
         }
       });
 
-      // Clean up any other relevant files related to feedposts
+      // Remove social post seed credentials file
       fs.unlink("./public/temp/Post-seed-credentials.json", (err) => {
         if (err) console.log("Post seed credentials are missing.");
       });
 
-      return res.status(200).json(new ApiResponse(200, null, "posts table dropped successfully"));
+      return res
+        .status(200)
+        .json(new ApiResponse(200, null, "posts table dropped successfully"));
     } catch (error) {
       console.error("Error dropping the feedposts table: ", error);
-      return res.status(500).json(new ApiError(500, "Something went wrong while dropping the feedposts table"));
+      return res
+        .status(500)
+        .json(new ApiError(500, "Something went wrong while dropping the feedposts table"));
     }
   }
-  return res.status(500).json(new ApiError(500, "Database connection is missing"));
+  return res
+    .status(500)
+    .json(new ApiError(500, "Database connection is missing"));
 });
-// * API DOCS
-// ? Keeping swagger code at the end so that we can load swagger on "/" route
+
+// ============================================================
+// API DOCUMENTATION — Swagger UI (mounted on "/" root)
+// Note: Kept at the end so it doesn't intercept other routes
+// ============================================================
 app.use(
   "/",
   swaggerUi.serve,
   swaggerUi.setup(swaggerDocument, {
     swaggerOptions: {
-      docExpansion: "none", // keep all the sections collapsed by default
+      docExpansion: "none", // Keep all sections collapsed by default
     },
     customSiteTitle: "FreeAPI docs",
   })
 );
 
-// common error handling middleware
+// ============================================================
+//  GLOBAL ERROR HANDLER (must be last middleware)
+// ============================================================
 app.use(errorHandler);
 
 export { httpServer };
