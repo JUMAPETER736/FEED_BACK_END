@@ -203,3 +203,22 @@ const toggleRepost = asyncHandler(async (req, res) => {
     }
 });
 
+const getUserReposts = asyncHandler(async (req, res) => {
+    try {
+        const userId = req.user?._id;
+
+        const userReposts = await FeedRepost.find({ repostedByUserId: userId })
+            .populate('originalPostId')
+            .populate('repostedByUserId')
+            .sort({ createdAt: -1 });
+
+        return res.status(200).json(
+            new ApiResponse(200, { reposts: userReposts }, "User reposts fetched successfully")
+        );
+    } catch (error) {
+        console.error("Get user reposts error:", error);
+        return res.status(500).json(
+            new ApiResponse(500, {}, "Failed to fetch user reposts")
+        );
+    }
+});
