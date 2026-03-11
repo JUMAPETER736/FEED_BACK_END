@@ -387,3 +387,57 @@ const getCommentsReply = asyncHandler(async (req, res) => {
 });
 
 
+const deleteCommentReply = asyncHandler(async (req, res) => {
+  const { commentReplyId } = req.params;
+  const deletedComment = await FeedCommentReply.findOneAndDelete({
+    _id: new mongoose.Types.ObjectId(commentReplyId),
+    author: req.user?._id,
+  });
+
+  if (!deletedComment) {
+    throw new ApiError(
+      404,
+      "Comment is already deleted or you are not authorized for this action."
+    );
+  }
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, { deletedComment }, "Comment deleted successfully")
+    );
+});
+
+const updateCommentReply = asyncHandler(async (req, res) => {
+  const { commentReplyId } = req.params;
+  const { content } = req.body;
+
+  const updatedComment = await FeedCommentReply.findOneAndUpdate(
+    {
+      _id: new mongoose.Types.ObjectId(commentReplyId),
+      author: req.user?._id,
+    },
+    {
+      $set: { content },
+    },
+    { new: true }
+  );
+
+  if (!updatedComment) {
+    throw new ApiError(
+      404,
+      "Comment does not exist or you are not authorized for this action."
+    );
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, updatedComment, "Comment updated successfully"));
+});
+
+export {
+  addCommentReply,
+  getCommentsReply,
+  deleteCommentReply,
+  updateCommentReply,
+};
