@@ -300,6 +300,33 @@ const getRepostedPosts = asyncHandler(async (req, res) => {
                 },
             },
 
+            // STEP 4: LOOKUP ORIGINAL POST DATA
+            {
+                $addFields: {
+                    _originalPostIdObj: {
+                        $cond: {
+                            if: {
+                                $and: [
+                                    { $ne: ["$originalPostId", null] },
+                                    { $ne: ["$originalPostId", ""] },
+                                ],
+                            },
+                            then: { $toObjectId: "$originalPostId" },
+                            else: null,
+                        },
+                    },
+                },
+            },
+            {
+                $lookup: {
+                    from: "feedposts",
+                    localField: "_originalPostIdObj",
+                    foreignField: "_id",
+                    as: "_originalPostData",
+                },
+            },
+            { $unwind: { path: "$_originalPostData", preserveNullAndEmptyArrays: true } },
+
 
             ]);
 
