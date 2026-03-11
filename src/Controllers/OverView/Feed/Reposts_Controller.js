@@ -249,7 +249,61 @@ const getRepostedPosts = asyncHandler(async (req, res) => {
 
             ]);
 
-            
+
+             // STEP 3: REPOST WRAPPER'S OWN STATS
+            {
+                $lookup: {
+                    from: "feedlikes",
+                    localField: "_id",
+                    foreignField: "postId",
+                    as: "repostLikes",
+                },
+            },
+            {
+                $lookup: {
+                    from: "feedbookmarks",
+                    localField: "_id",
+                    foreignField: "postId",
+                    as: "repostBookmarks",
+                },
+            },
+            {
+                $lookup: {
+                    from: "feedposts",
+                    let: { wrapperId: "$_id" },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                    $and: [
+                                        { $eq: ["$originalPostId", "$$wrapperId"] },
+                                        { $ne: ["$repostedByUserId", null] }
+                                    ]
+                                }
+                            }
+                        }
+                    ],
+                    as: "repostReposts",
+                },
+            },
+            {
+                $lookup: {
+                    from: "feedshares",
+                    localField: "_id",
+                    foreignField: "postId",
+                    as: "repostShares",
+                },
+            },
+            {
+                $lookup: {
+                    from: "feedcomments",
+                    localField: "_id",
+                    foreignField: "postId",
+                    as: "repostComments",
+                },
+            },
+
+
 
             const posts = await FeedPost.aggregatePaginate(
             postAggregation,
