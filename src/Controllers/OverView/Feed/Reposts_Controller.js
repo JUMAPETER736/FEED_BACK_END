@@ -388,7 +388,78 @@ const getRepostedPosts = asyncHandler(async (req, res) => {
                 },
             },
 
-            
+              //  Only count real repost wrappers for _origReposts
+            {
+                $lookup: {
+                    from: "feedposts",
+                    let: { origId: "$_originalPostData._id" },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                    $and: [
+                                        { $eq: ["$originalPostId", "$$origId"] },
+                                        { $ne: ["$repostedByUserId", null] }  // only real repost wrappers
+                                    ]
+                                }
+                            }
+                        }
+                    ],
+                    as: "_origReposts",
+                },
+            },
+            {
+                $lookup: {
+                    from: "feedshares",
+                    localField: "_originalPostData._id",
+                    foreignField: "postId",
+                    as: "_origShares",
+                },
+            },
+            {
+                $lookup: {
+                    from: "feedcomments",
+                    localField: "_originalPostData._id",
+                    foreignField: "postId",
+                    as: "_origComments",
+                },
+            },
+
+            // STEP 8: ORIGINAL POST REPOSTER PROFILES
+            {
+                $lookup: {
+                    from: "users",
+                    let: { reposterIds: "$_origReposts.repostedByUserId" },
+                    pipeline: [
+                        { $match: { $expr: { $in: ["$_id", "$$reposterIds"] } } },
+                        {
+                            $lookup: {
+                                from: "socialprofiles",
+                                localField: "_id",
+                                foreignField: "owner",
+                                as: "profile",
+                            },
+                        },
+                        { $unwind: { path: "$profile", preserveNullAndEmptyArrays: true } },
+                        {
+                            $project: {
+                                _id: 1,
+                                avatar: 1,
+                                username: 1,
+                                email: 1,
+                                createdAt: 1,
+                                updatedAt: 1,
+                                coverImage: "$profile.coverImage",
+                                firstName: "$profile.firstName",
+                                lastName: "$profile.lastName",
+                                bio: "$profile.bio",
+                                owner: "$_id",
+                            },
+                        },
+                    ],
+                    as: "_origReposters",
+                },
+            },
 
 
             ]);
