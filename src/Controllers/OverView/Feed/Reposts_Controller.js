@@ -461,6 +461,179 @@ const getRepostedPosts = asyncHandler(async (req, res) => {
                 },
             },
 
+             // STEP 9: PROJECT FINAL RESPONSE STRUCTURE
+            {
+                $project: {
+                    // Wrapper identity
+                    _id: 1,
+                    __v: 1,
+                    content: 1,
+                    createdAt: 1,
+                    updatedAt: 1,
+
+                    // Repost wrappers carry no media of their own
+                    feedShortsBusinessId: { $literal: null },
+                    tags: { $literal: [] },
+                    contentType: { $literal: "" },
+                    numberOfPages: { $literal: [] },
+                    files: { $literal: [] },
+                    fileIds: { $literal: [] },
+                    thumbnail: { $literal: [] },
+                    duration: { $literal: [] },
+                    fileNames: { $literal: [] },
+                    fileTypes: { $literal: [] },
+                    fileSizes: { $literal: [] },
+
+                    // Repost flags
+                    isReposted: { $literal: true },
+                    isRepostWrapper: { $literal: true },
+                    repostedByUserId: 1,
+                    repostedUsers: ["$repostedByUserId"],
+
+                    // Misc flags
+                    isBusinessPost: { $literal: false },
+                    isFollowing: { $literal: false },
+                    isExpanded: { $literal: false },
+                    isLocal: { $literal: false },
+
+                    // Wrapper's own engagement stats
+                    comments: { $size: "$repostComments" },
+
+                    likes: { $size: "$repostLikes" },
+                    isLiked: { $in: [userId, "$repostLikes.likedBy"] },
+                    likedByUserIds: {
+                        $map: { input: "$repostLikes", as: "l", in: "$$l.likedBy" },
+                    },
+
+                    bookmarkCount: { $size: "$repostBookmarks" },
+                    isBookmarked: { $in: [userId, "$repostBookmarks.bookmarkedBy"] },
+                    bookmarkedByUserIds: "$repostBookmarks.bookmarkedBy",
+
+                    repostCount: { $size: "$repostReposts" },
+                    isRepostedByMe: {
+                        $in: [
+                            userId,
+                            { $map: { input: "$repostReposts", as: "r", in: "$$r.repostedByUserId" } },
+                        ],
+                    },
+                    repostedByUserIds: {
+                        $map: { input: "$repostReposts", as: "r", in: "$$r.repostedByUserId" },
+                    },
+
+                    shareCount: { $size: "$repostShares" },
+                    isShared: { $in: [userId, "$repostShares.sharedBy"] },
+                    sharedByUserIds: {
+                        $map: { input: "$repostShares", as: "s", in: "$$s.sharedBy" },
+                    },
+
+                    // The user who did the reposting
+                    repostedUser: {
+                        _id: "$_reposterProfile._id",
+                        avatar: "$_reposterAccount.avatar",
+                        username: "$_reposterAccount.username",
+                        email: "$_reposterAccount.email",
+                        createdAt: "$_reposterAccount.createdAt",
+                        updatedAt: "$_reposterAccount.updatedAt",
+                        coverImage: "$_reposterProfile.coverImage",
+                        firstName: "$_reposterProfile.firstName",
+                        lastName: "$_reposterProfile.lastName",
+                        bio: "$_reposterProfile.bio",
+                        owner: "$_reposterAccount._id",
+                    },
+
+                    // Original post with LIVE global counts
+                    originalPost: {
+                        $cond: {
+                            if: {
+                                $and: [
+                                    { $ne: ["$originalPostId", null] },
+                                    { $ne: ["$_originalPostData", null] },
+                                    { $ne: ["$_originalPostData._id", null] },
+                                ],
+                            },
+                            then: [
+                                {
+                                    _id: "$_originalPostData._id",
+                                    __v: "$_originalPostData.__v",
+                                    content: "$_originalPostData.content",
+                                    duration: "$_originalPostData.duration",
+                                    feedShortsBusinessId: "$_originalPostData.feedShortsBusinessId",
+                                    tags: "$_originalPostData.tags",
+                                    contentType: "$_originalPostData.contentType",
+                                    numberOfPages: "$_originalPostData.numberOfPages",
+                                    fileNames: "$_originalPostData.fileNames",
+                                    fileTypes: "$_originalPostData.fileTypes",
+                                    fileSizes: "$_originalPostData.fileSizes",
+                                    files: "$_originalPostData.files",
+                                    fileIds: "$_originalPostData.fileIds",
+                                    thumbnail: "$_originalPostData.thumbnail",
+                                    createdAt: "$_originalPostData.createdAt",
+                                    updatedAt: "$_originalPostData.updatedAt",
+
+                                    originalPostId: { $literal: null },
+                                    isReposted: { $literal: false },
+                                    repostedByUserId: { $literal: null },
+                                    repostedUsers: { $literal: [] },
+
+                                    author: {
+                                        _id: "$_origAuthorProfile._id",
+                                        coverImage: "$_origAuthorProfile.coverImage",
+                                        firstName: "$_origAuthorProfile.firstName",
+                                        lastName: "$_origAuthorProfile.lastName",
+                                        bio: "$_origAuthorProfile.bio",
+                                        dob: "$_origAuthorProfile.dob",
+                                        location: "$_origAuthorProfile.location",
+                                        countryCode: "$_origAuthorProfile.countryCode",
+                                        phoneNumber: "$_origAuthorProfile.phoneNumber",
+                                        owner: "$_origAuthorProfile.owner",
+                                        createdAt: "$_origAuthorProfile.createdAt",
+                                        updatedAt: "$_origAuthorProfile.updatedAt",
+                                        __v: "$_origAuthorProfile.__v",
+                                        account: {
+                                            _id: "$_origAuthorAccount._id",
+                                            avatar: "$_origAuthorAccount.avatar",
+                                            username: "$_origAuthorAccount.username",
+                                            email: "$_origAuthorAccount.email",
+                                            createdAt: "$_origAuthorAccount.createdAt",
+                                            updatedAt: "$_origAuthorAccount.updatedAt",
+                                        },
+                                    },
+
+                                    originalPostReposter: "$_origReposters",
+                                    bookmarks: "$_origBookmarks",
+
+                                    // LIVE global counts for the quoted post card
+                                    commentCount: { $size: "$_origComments" },
+                                    likeCount: { $size: "$_origLikes" },
+                                    bookmarkCount: { $size: "$_origBookmarks" },
+                                    repostCount: { $size: "$_origReposts" },
+                                    shareCount: { $size: "$_origShares" },
+                                },
+                            ],
+                            else: [],
+                        },
+                    },
+                },
+            },
+
+            // STEP 10: CLEANUP temp fields
+            {
+                $project: {
+                    _originalPostIdObj: 0,
+                    _originalPostData: 0,
+                    _origAuthorProfile: 0,
+                    _origAuthorAccount: 0,
+                    _origLikes: 0,
+                    _origBookmarks: 0,
+                    _origReposts: 0,
+                    _origShares: 0,
+                    _origComments: 0,
+                    _origReposters: 0,
+                    _reposterAccount: 0,
+                    _reposterProfile: 0,
+                },
+            },
+
 
             ]);
 
