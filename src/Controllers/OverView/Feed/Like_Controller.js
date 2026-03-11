@@ -836,3 +836,129 @@ const getLikedPosts = asyncHandler(async (req, res) => {
 });
 
 
+const likeDislikeFeedPost = asyncHandler(async (req, res) => {
+  const { postId } = req.params;
+
+  console.log("=== LIKE/UNLIKE REQUEST ===");
+  console.log("PostId received:", postId);
+
+  const post = await FeedPost.findById(postId);
+
+  // Check for post existence
+  if (!post) {
+    throw new ApiError(404, "Post not found");
+  }
+
+  console.log("Post found. Is repost?", !!post.originalPostId);
+
+  // See if user has already liked THIS SPECIFIC POST (wrapper or original)
+  const existingLike = await FeedLike.findOne({
+    postId: post._id,  // ← Use the exact ID received (wrapper or original)
+    likedBy: req.user._id,
+  });
+
+  console.log("Existing like?", !!existingLike);
+
+  if (existingLike) {
+    // Unlike: remove the like record
+    await FeedLike.findByIdAndDelete(existingLike._id);
+    console.log("✓ Deleted like");
+
+    // Get updated like count and user IDs FOR THIS SPECIFIC POST
+    const allLikes = await FeedLike.find({ postId: post._id }).select('likedBy');
+    const likedByUserIds = allLikes.map(like => like.likedBy.toString());
+
+    console.log("✓ New count:", allLikes.length);
+
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        {
+          isLiked: false,
+          likeCount: allLikes.length,
+          likedByUserIds: likedByUserIds
+        },
+        "Post unliked successfully"
+      )
+    );
+  } else {
+    // Like: create new like record FOR THIS SPECIFIC POST
+    await FeedLike.create({
+      postId: post._id,  // ← Use the exact ID (wrapper or original)
+      likedBy: req.user._id,
+    });
+
+    console.log("✓ Created like");
+
+    // Get updated like count and user IDs
+    const allLikes = await FeedLike.find({ postId: post._id }).select('likedBy');
+    const likedByUserIds = allLikes.map(like => like.likedBy.toString());
+
+    console.log("✓ New count:", allLikes.length);
+
+    // Don't create notification if user is liking their own post
+    if (post.author.toString() !== req.user._id.toString()) {
+      // Create notification for the post author
+      await UnifiedNotification.create({
+        owner: post.author,
+        sender: req.user._id,
+        message: `${req.user.username} has liked your post.`,
+        avatar: req.user.avatar,
+        type: "postLiked",
+        data: {
+          postId: post._id,
+          for: "feed",
+          commentId: null,
+          commentReplyId: null,
+        },
+      });
+
+      // Fetch the created notification with aggregation
+      const notifications = await UnifiedNotification.aggregate([
+        {
+          $match: {
+            owner: new mongoose.Types.ObjectId(post.author),
+          },
+        },
+        ...unifiedNotificationCommonAggregation(),
+        {
+          $sort: {
+            createdAt: -1,
+          },
+        },
+        {
+          $limit: 1,
+        },
+      ]);
+
+      const likeNotification = notifications[0];
+
+      if (likeNotification) {
+        // Emit socket event for real-time notification
+        emitSocketEvent(
+          req,
+          post.author.toString(),
+          "postLiked",
+          likeNotification
+        );
+
+        // Update unread count
+        emitUnreadCountUpdate(req, post.author);
+      }
+    }
+
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        {
+          isLiked: true,
+          likeCount: allLikes.length,
+          likedByUserIds: likedByUserIds
+        },
+        "Post liked successfully"
+      )
+    );
+  }
+});
+
+
