@@ -370,6 +370,24 @@ const getRepostedPosts = asyncHandler(async (req, res) => {
             },
             { $unwind: { path: "$_reposterProfile", preserveNullAndEmptyArrays: true } },
 
+            // STEP 7: ORIGINAL POST LIVE STATS
+            {
+                $lookup: {
+                    from: "feedlikes",
+                    localField: "_originalPostData._id",
+                    foreignField: "postId",
+                    as: "_origLikes",
+                },
+            },
+            {
+                $lookup: {
+                    from: "feedbookmarks",
+                    localField: "_originalPostData._id",
+                    foreignField: "postId",
+                    as: "_origBookmarks",
+                },
+            },
+
 
             ]);
 
