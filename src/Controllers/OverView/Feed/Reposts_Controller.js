@@ -222,3 +222,44 @@ const getUserReposts = asyncHandler(async (req, res) => {
         );
     }
 });
+
+
+
+const getRepostedPosts = asyncHandler(async (req, res) => {
+    const { page = 1, limit = 10 } = req.query;
+
+    console.log("Starting getRepostedPosts for user:", req.user?._id);
+
+
+     try {
+
+
+
+            const posts = await FeedPost.aggregatePaginate(
+            postAggregation,
+            getMongoosePaginationOptions({
+                page: parseInt(page),
+                limit: parseInt(limit),
+                customLabels: {
+                    totalDocs: "totalRepostedPosts",
+                    docs: "repostedPosts",
+                },
+            })
+        );
+
+        console.log("All Reposted Posts fetched successfully:", posts.totalRepostedPosts);
+
+        return res
+            .status(200)
+            .json(new ApiResponse(200, posts, "All Reposted Posts fetched successfully"));
+
+         } catch (error) {
+
+
+     }
+
+
+ });
+
+
+ export { toggleRepost, getUserReposts, getRepostedPosts };
