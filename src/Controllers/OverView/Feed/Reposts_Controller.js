@@ -247,10 +247,7 @@ const getRepostedPosts = asyncHandler(async (req, res) => {
               // STEP 2: Newest repost first
             { $sort: { createdAt: -1 } },
 
-            ]);
-
-
-             // STEP 3: REPOST WRAPPER'S OWN STATS
+              // STEP 3: REPOST WRAPPER'S OWN STATS
             {
                 $lookup: {
                     from: "feedlikes",
@@ -303,6 +300,8 @@ const getRepostedPosts = asyncHandler(async (req, res) => {
                 },
             },
 
+
+            ]);
 
 
             const posts = await FeedPost.aggregatePaginate(
