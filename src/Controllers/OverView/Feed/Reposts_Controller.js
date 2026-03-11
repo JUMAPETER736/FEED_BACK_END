@@ -328,6 +328,29 @@ const getRepostedPosts = asyncHandler(async (req, res) => {
             { $unwind: { path: "$_originalPostData", preserveNullAndEmptyArrays: true } },
 
 
+            // STEP 5: ORIGINAL POST AUTHOR
+            //  foreignField changed from "_id" to "owner"
+            {
+                $lookup: {
+                    from: "socialprofiles",
+                    localField: "_originalPostData.author",  // User ObjectId
+                    foreignField: "owner",                    //  was "_id"
+                    as: "_origAuthorProfile",
+                },
+            },
+            { $unwind: { path: "$_origAuthorProfile", preserveNullAndEmptyArrays: true } },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "_origAuthorProfile.owner",
+                    foreignField: "_id",
+                    as: "_origAuthorAccount",
+                },
+            },
+            { $unwind: { path: "$_origAuthorAccount", preserveNullAndEmptyArrays: true } },
+
+            
+
             ]);
 
 
