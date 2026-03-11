@@ -234,6 +234,22 @@ const getRepostedPosts = asyncHandler(async (req, res) => {
      try {
 
 
+            const postAggregation = FeedPost.aggregate([
+
+                 // STEP 1: Only repost wrappers created by this user
+            {
+                $match: {
+                    repostedByUserId: userId,
+                    originalPostId: { $exists: true, $ne: null },
+                },
+            },
+
+              // STEP 2: Newest repost first
+            { $sort: { createdAt: -1 } },
+
+            ]);
+
+            
 
             const posts = await FeedPost.aggregatePaginate(
             postAggregation,
@@ -254,7 +270,11 @@ const getRepostedPosts = asyncHandler(async (req, res) => {
             .json(new ApiResponse(200, posts, "All Reposted Posts fetched successfully"));
 
          } catch (error) {
-
+              console.error("Error fetching reposted posts:", error);
+             
+              return res
+              .status(500)
+             .json(new ApiResponse(500, {}, `Error: ${error.message}`));
 
      }
 
