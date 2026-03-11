@@ -962,3 +962,249 @@ const likeDislikeFeedPost = asyncHandler(async (req, res) => {
 });
 
 
+const likeDislikeFeedComment = asyncHandler(async (req, res) => {
+  const { commentId } = req.params;
+
+  const comment = await FeedComment.findById(commentId);
+
+  // Check for comment existence
+  if (!comment) {
+    throw new ApiError(404, "Comment does not exist");
+  }
+
+  // See if user has already liked the comment
+  const existingLike = await FeedLike.findOne({
+    commentId: comment._id,
+    likedBy: req.user._id,
+  });
+
+  if (existingLike) {
+    // Unlike: remove the like record
+    await FeedLike.findByIdAndDelete(existingLike._id);
+
+    // Get updated like count and user IDs
+    const allLikes = await FeedLike.find({ commentId: comment._id }).select('likedBy');
+    const likedByUserIds = allLikes.map(like => like.likedBy.toString());
+
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        {
+          isLiked: false,
+          likeCount: allLikes.length,
+          likedByUserIds: likedByUserIds
+        },
+        "Comment unliked successfully"
+      )
+    );
+  } else {
+    // Like: create new like record
+    await FeedLike.create({
+      commentId: comment._id,
+      likedBy: req.user._id,
+    });
+
+    // Get updated like count and user IDs
+    const allLikes = await FeedLike.find({ commentId: comment._id }).select('likedBy');
+    const likedByUserIds = allLikes.map(like => like.likedBy.toString());
+
+    const commentOwner = comment.author;
+
+    // Don't create notification if user is liking their own comment
+    if (commentOwner.toString() !== req.user._id.toString()) {
+      // Verify comment owner exists
+      const user = await User.findById(commentOwner);
+
+      if (!user) {
+        throw new ApiError(404, "Comment owner not found");
+      }
+
+      // Create notification for comment owner
+      await UnifiedNotification.create({
+        owner: commentOwner,
+        sender: req.user._id,
+        message: `${req.user.username} liked your comment`,
+        avatar: req.user.avatar,
+        type: "postLiked",
+        data: {
+          postId: comment.postId,
+          for: "feed",
+          commentId: comment._id,
+          commentReplyId: null,
+        },
+      });
+
+      // Fetch the created notification
+      const notifications = await UnifiedNotification.aggregate([
+        {
+          $match: {
+            owner: new mongoose.Types.ObjectId(commentOwner),
+          },
+        },
+        ...unifiedNotificationCommonAggregation(),
+        {
+          $sort: {
+            createdAt: -1,
+          },
+        },
+        {
+          $limit: 1,
+        },
+      ]);
+
+      const newNotification = notifications[0];
+
+      if (newNotification) {
+        // Emit socket event
+        emitSocketEvent(
+          req,
+          commentOwner.toString(),
+          "postLiked",
+          newNotification
+        );
+
+        // Update unread count
+        emitUnreadCountUpdate(req, commentOwner);
+      }
+    }
+
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        {
+          isLiked: true,
+          likeCount: allLikes.length,
+          likedByUserIds: likedByUserIds
+        },
+        "Comment liked successfully"
+      )
+    );
+  }
+});
+
+const likeDislikeFeedCommentReply = asyncHandler(async (req, res) => {
+  const { commentReplyId } = req.params;
+
+  const commentReply = await FeedCommentReply.findById(commentReplyId);
+
+  // Check for comment reply existence
+  if (!commentReply) {
+    throw new ApiError(404, "Comment reply does not exist");
+  }
+
+  // Get the parent comment for notification context
+  const parentComment = await FeedComment.findById(commentReply.commentId);
+
+  if (!parentComment) {
+    throw new ApiError(404, "Parent comment not found");
+  }
+
+  // See if user has already liked the comment reply
+  const existingLike = await FeedLike.findOne({
+    commentReplyId: commentReply._id,
+    likedBy: req.user._id,
+  });
+
+  if (existingLike) {
+    // Unlike: remove the like record
+    await FeedLike.findByIdAndDelete(existingLike._id);
+
+    // Get updated like count and user IDs
+    const allLikes = await FeedLike.find({ commentReplyId: commentReply._id }).select('likedBy');
+    const likedByUserIds = allLikes.map(like => like.likedBy.toString());
+
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        {
+          isLiked: false,
+          likeCount: allLikes.length,
+          likedByUserIds: likedByUserIds
+        },
+        "Comment reply unliked successfully"
+      )
+    );
+  } else {
+    // Like: create new like record
+    await FeedLike.create({
+      commentReplyId: commentReply._id,
+      likedBy: req.user._id,
+    });
+
+    // Get updated like count and user IDs
+    const allLikes = await FeedLike.find({ commentReplyId: commentReply._id }).select('likedBy');
+    const likedByUserIds = allLikes.map(like => like.likedBy.toString());
+
+    const replyOwner = commentReply.author;
+
+    // Don't create notification if user is liking their own reply
+    if (replyOwner.toString() !== req.user._id.toString()) {
+      // Create notification for reply owner
+      await UnifiedNotification.create({
+        owner: replyOwner,
+        sender: req.user._id,
+        message: `${req.user.username} liked your comment`,
+        avatar: req.user.avatar,
+        type: "postLiked",
+        data: {
+          postId: parentComment.postId,
+          for: "feed",
+          commentId: parentComment._id,
+          commentReplyId: commentReply._id,
+        },
+      });
+
+      // Fetch the created notification
+      const notifications = await UnifiedNotification.aggregate([
+        {
+          $match: {
+            owner: new mongoose.Types.ObjectId(replyOwner),
+          },
+        },
+        ...unifiedNotificationCommonAggregation(),
+        {
+          $sort: {
+            createdAt: -1,
+          },
+        },
+        {
+          $limit: 1,
+        },
+      ]);
+
+      const newNotification = notifications[0];
+
+      if (newNotification) {
+        // Emit socket event
+        emitSocketEvent(
+          req,
+          replyOwner.toString(),
+          "postLiked",
+          newNotification
+        );
+
+        // Update unread count
+        emitUnreadCountUpdate(req, replyOwner);
+      }
+    }
+
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        {
+          isLiked: true,
+          likeCount: allLikes.length,
+          likedByUserIds: likedByUserIds
+        },
+        "Comment reply liked successfully"
+      )
+    );
+  }
+});
+
+export {
+  likeDislikeFeedPost,
+  likeDislikeFeedComment,
+  likeDislikeFeedCommentReply,
+  getLikedPosts,
+};
