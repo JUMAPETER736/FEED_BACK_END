@@ -800,3 +800,230 @@ const getPostById = asyncHandler(async (req, res) => {
 });
 
 
+const getAllFeed = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10 } = req.query;
+
+  const postAggregation = FeedPost.aggregate([
+    ...feedCommonAggregation(req),
+    { $sort: { createdAt: -1 } },
+
+    {
+      $lookup: {
+        from: "feedbookmarks",
+        let: { postId: "$_id" },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$postId", "$$postId"] },
+                  { $eq: ["$bookmarkedBy", new mongoose.Types.ObjectId(req.user?._id)] }
+                ]
+              }
+            }
+          }
+        ],
+        as: "userBookmark"
+      }
+    },
+    {
+      $lookup: {
+        from: "feedbookmarks",
+        localField: "_id",
+        foreignField: "postId",
+        as: "allBookmarks"
+      }
+    },
+    {
+      $addFields: {
+        isBookmarked: {
+          $cond: {
+            if: { $gt: [{ $size: "$userBookmark" }, 0] },
+            then: true,
+            else: false
+          }
+        },
+        bookmarkCount: { $size: "$allBookmarks" },
+        bookmarkedByUserIds: "$allBookmarks.bookmarkedBy"
+      }
+    },
+    {
+      $project: {
+        userBookmark: 0,
+        allBookmarks: 0
+      }
+    }
+  ]);
+
+  try {
+    const posts = await FeedPost.aggregatePaginate(
+      postAggregation,
+      getMongoosePaginationOptions({
+        page,
+        limit,
+        customLabels: {
+          totalDocs: "totalPosts",
+          docs: "posts",
+        },
+      })
+    );
+
+    // ✅ FIX: This loop now actually runs because originalPostId
+    //         is preserved in the aggregation output above
+    for (let post of posts.posts) {
+      if (post.isReposted && post.originalPostId) {
+
+        // Only fix posts where originalPost is still empty
+        // (the aggregation may have already populated it correctly)
+        if (!post.originalPost || post.originalPost.length === 0) {
+
+          const originalPost = await FeedPost.findById(post.originalPostId);
+
+          if (originalPost) {
+            // ✅ FIX: Use findOne({ owner: ... }) not findById
+            // because author field is a User ObjectId, not profile ObjectId
+            const authorProfile = await SocialProfile.findOne({
+              owner: originalPost.author
+            }).populate({
+              path: 'owner',
+              select: 'avatar username email createdAt updatedAt _id'
+            });
+
+            if (authorProfile) {
+              const builtAuthor = {
+                _id: authorProfile._id,
+                coverImage: authorProfile.coverImage,
+                firstName: authorProfile.firstName,
+                lastName: authorProfile.lastName,
+                bio: authorProfile.bio,
+                dob: authorProfile.dob,
+                location: authorProfile.location,
+                countryCode: authorProfile.countryCode,
+                phoneNumber: authorProfile.phoneNumber,
+                owner: authorProfile.owner?._id || authorProfile.owner,
+                createdAt: authorProfile.createdAt,
+                updatedAt: authorProfile.updatedAt,
+                __v: authorProfile.__v,
+              };
+
+              if (authorProfile.owner) {
+                builtAuthor.account = {
+                  _id: authorProfile.owner._id,
+                  avatar: authorProfile.owner.avatar,
+                  username: authorProfile.owner.username,
+                  email: authorProfile.owner.email,
+                  createdAt: authorProfile.owner.createdAt,
+                  updatedAt: authorProfile.owner.updatedAt
+                };
+              }
+
+              post.originalPost = [{
+                _id: originalPost._id,
+                author: builtAuthor,
+                content: originalPost.content || "",
+                contentType: originalPost.contentType || "text",
+                files: originalPost.files || [],
+                fileIds: originalPost.fileIds || [],
+                fileTypes: originalPost.fileTypes || [],
+                fileNames: originalPost.fileNames || [],
+                fileSizes: originalPost.fileSizes || [],
+                duration: originalPost.duration || [],
+                thumbnail: originalPost.thumbnail || [],
+                numberOfPages: originalPost.numberOfPages || [],
+                tags: originalPost.tags || [],
+                feedShortsBusinessId: originalPost.feedShortsBusinessId || null,
+                createdAt: originalPost.createdAt,
+                updatedAt: originalPost.updatedAt,
+                originalPostId: null,
+                isReposted: false,
+                repostedByUserId: null,
+                repostedUsers: [],
+                originalPostReposter: [],
+                bookmarks: [],
+                commentCount: 0,
+                likeCount: 0,
+                bookmarkCount: 0,
+                repostCount: 0,
+                shareCount: 0,
+              }];
+            }
+          }
+        }
+
+        // Fix the repostedUser if missing
+        if (!post.repostedUser && post.repostedByUserId) {
+          const repostedByUser = await User.findById(post.repostedByUserId);
+
+          if (repostedByUser) {
+            const repostedUserProfile = await SocialProfile.findOne({
+              owner: repostedByUser._id
+            });
+
+            const safeUser = {
+              _id: repostedUserProfile?._id || repostedByUser._id,
+              username: repostedByUser.username,
+              email: repostedByUser.email,
+              createdAt: repostedByUser.createdAt,
+              updatedAt: repostedByUser.updatedAt,
+            };
+
+            if (repostedByUser.avatar) {
+              safeUser.avatar = {
+                url: repostedByUser.avatar.url,
+                localPath: repostedByUser.avatar.localPath,
+                _id: repostedByUser.avatar._id,
+              };
+            }
+
+            if (repostedUserProfile) {
+              safeUser.coverImage = repostedUserProfile.coverImage;
+              safeUser.firstName = repostedUserProfile.firstName;
+              safeUser.lastName = repostedUserProfile.lastName;
+              safeUser.bio = repostedUserProfile.bio;
+              safeUser.owner = repostedByUser._id;
+            }
+
+            post.repostedUser = safeUser;
+          }
+        }
+      }
+
+      // Fix missing contentType
+      if (!post.contentType) {
+        if (post.files && post.files.length > 0) {
+          const fileTypes = post.fileTypes?.map(f => f.fileType || "").filter(Boolean) || [];
+          const hasVideo = fileTypes.some(type => type.toLowerCase().includes("video"));
+          const hasImage = fileTypes.some(type => type.toLowerCase().includes("image"));
+          const hasAudio = fileTypes.some(type => type.toLowerCase().includes("audio"));
+
+          if (hasVideo && hasImage) {
+            post.contentType = "mixed_files";
+          } else if (hasVideo) {
+            post.contentType = "video";
+          } else if (hasAudio) {
+            post.contentType = "vn";
+          } else if (hasImage) {
+            post.contentType = "mixed_files";
+          } else {
+            post.contentType = "text";
+          }
+        } else {
+          post.contentType = "text";
+        }
+      }
+
+      // ✅ Remove originalPostId from final response
+      // (it was only needed for the post-processing loop above)
+      delete post.originalPostId;
+    }
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, { data: posts }, "Get All Feed fetched successfully"));
+  } catch (e) {
+    console.log("Error fetching posts: ", e);
+    return res
+      .status(500)
+      .json(new ApiResponse(500, {}, "Error fetching posts"));
+  }
+});
