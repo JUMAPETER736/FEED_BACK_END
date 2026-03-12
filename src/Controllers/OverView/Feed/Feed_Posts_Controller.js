@@ -1027,3 +1027,285 @@ const getAllFeed = asyncHandler(async (req, res) => {
       .json(new ApiResponse(500, {}, "Error fetching posts"));
   }
 });
+
+const getLikedPosts = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10 } = req.query;
+
+  console.log("Starting getLikedPosts for user:", req.user?._id);
+
+  try {
+    const userId = new mongoose.Types.ObjectId(req.user?._id);
+
+    // ✅ Start from FeedPost, NOT FeedLike
+    const postAggregation = FeedPost.aggregate([
+      // First, lookup likes to filter only posts liked by current user
+      {
+        $lookup: {
+          from: "feedlikes",
+          let: { postId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$postId", "$$postId"] },
+                    { $eq: ["$likedBy", userId] }
+                  ]
+                }
+              }
+            }
+          ],
+          as: "userLike"
+        }
+      },
+
+      // ✅ Filter to only include posts that the user has liked
+      {
+        $match: {
+          userLike: { $ne: [] }
+        }
+      },
+
+      // ✅ Add like metadata
+      {
+        $addFields: {
+          likeId: { $arrayElemAt: ["$userLike._id", 0] },
+          likedAt: { $arrayElemAt: ["$userLike.createdAt", 0] }
+        }
+      },
+
+      // ✅ Sort by when they liked it (most recent first)
+      {
+        $sort: { likedAt: -1 }
+      },
+
+      // ✅ Remove the temporary userLike array
+      {
+        $project: {
+          userLike: 0
+        }
+      },
+
+      // Apply feedCommonAggregation (it expects post at root level)
+      ...feedCommonAggregation(req),
+
+      // ============================================
+      // LIKES AGGREGATION - SEPARATE FOR EACH POST
+      // ============================================
+      {
+        $lookup: {
+          from: "feedlikes",
+          localField: "_id",  // ← Match exact post ID (wrapper or original)
+          foreignField: "postId",
+          as: "postLikes"
+        }
+      },
+      {
+        $addFields: {
+          likedByUserIds: {
+            $map: {
+              input: "$postLikes",
+              as: "like",
+              in: "$$like.likedBy"
+            }
+          },
+          likes: { $size: "$postLikes" },
+          isLiked: true // Always true since we're fetching liked posts
+        }
+      },
+      {
+        $project: {
+          postLikes: 0
+        }
+      },
+
+      // ============================================
+      // BOOKMARKS AGGREGATION - SEPARATE FOR EACH POST
+      // ============================================
+      {
+        $lookup: {
+          from: "feedbookmarks",
+          localField: "_id",  // ← Match exact post ID (wrapper or original)
+          foreignField: "postId",
+          as: "bookmarks"
+        }
+      },
+      {
+        $addFields: {
+          bookmarkedByUserIds: "$bookmarks.bookmarkedBy",
+          bookmarkCount: { $size: "$bookmarks" },
+          isBookmarked: {
+            $in: [userId, "$bookmarks.bookmarkedBy"]
+          }
+        }
+      },
+      {
+        $project: {
+          bookmarks: 0
+        }
+      }
+    ]);
+
+    console.log("Executing aggregation with pagination");
+
+    // ✅ IMPORTANT: Use FeedPost.aggregatePaginate, NOT FeedLike
+    const posts = await FeedPost.aggregatePaginate(
+      postAggregation,
+      getMongoosePaginationOptions({
+        page: parseInt(page),
+        limit: parseInt(limit),
+        customLabels: {
+          totalDocs: "totalLikedPosts",
+          docs: "likedPosts",
+        },
+      })
+    );
+
+    // Post-processing for reposted posts (same as getAllFeed)
+    for (let post of posts.likedPosts) {
+      if (post.isReposted && post.originalPostId) {
+        const originalPost = await FeedPost.findById(post.originalPostId);
+
+        if (originalPost) {
+          const author = await SocialProfile.findById(originalPost.author)
+            .populate('owner');
+
+          if (author) {
+            post.author = {
+              _id: author._id,
+              coverImage: author.coverImage,
+              firstName: author.firstName,
+              lastName: author.lastName,
+              bio: author.bio,
+              dob: author.dob,
+              location: author.location,
+              countryCode: author.countryCode,
+              phoneNumber: author.phoneNumber,
+              owner: author.owner,
+              createdAt: author.createdAt,
+              updatedAt: author.updatedAt,
+              __v: author.__v,
+            };
+
+            if (author.owner) {
+              post.author.account = {
+                _id: author.owner._id,
+                avatar: author.owner.avatar,
+                username: author.owner.username,
+                email: author.owner.email,
+                createdAt: author.owner.createdAt,
+                updatedAt: author.owner.updatedAt
+              };
+            }
+
+            post.content = originalPost.content || post.content;
+            post.tags = originalPost.tags || post.tags;
+            post.fileIds = originalPost.fileIds || post.fileIds;
+            post.files = originalPost.files || post.files;
+            post.contentType = originalPost.contentType || post.contentType;
+
+            if (!post.contentType) {
+              post.contentType = "text";
+            }
+
+            if (!post.originalPost) {
+              post.originalPost = [];
+            }
+
+            if (post.originalPost.length === 0) {
+              post.originalPost.push({
+                _id: originalPost._id,
+                author: post.author,
+                content: originalPost.content,
+                contentType: originalPost.contentType,
+                files: originalPost.files,
+                fileIds: originalPost.fileIds,
+                tags: originalPost.tags,
+                createdAt: originalPost.createdAt,
+              });
+            }
+
+            post.comments = originalPost.comments || post.comments;
+            post.likes = originalPost.likes || post.likes;
+            post.reposts = originalPost.reposts || post.reposts;
+            post.repostedUsersCount = originalPost.repostedUsersCount || post.repostedUsersCount;
+          }
+
+          if (post.repostedByUserId) {
+            const repostedByUser = await User.findById(post.repostedByUserId);
+
+            if (repostedByUser) {
+              const repostedUserProfile = await SocialProfile.findOne({
+                owner: repostedByUser._id
+              });
+
+              const safeUser = {
+                _id: repostedUserProfile?._id || repostedByUser._id,
+                username: repostedByUser.username,
+                email: repostedByUser.email,
+                createdAt: repostedByUser.createdAt,
+                updatedAt: repostedByUser.updatedAt,
+              };
+
+              if (repostedByUser.avatar) {
+                safeUser.avatar = {
+                  url: repostedByUser.avatar.url,
+                  localPath: repostedByUser.avatar.localPath,
+                  _id: repostedByUser.avatar._id,
+                };
+              }
+
+              if (repostedUserProfile) {
+                safeUser.coverImage = repostedUserProfile.coverImage;
+                safeUser.firstName = repostedUserProfile.firstName;
+                safeUser.lastName = repostedUserProfile.lastName;
+                safeUser.bio = repostedUserProfile.bio;
+                safeUser.owner = repostedByUser._id;
+              }
+
+              post.repostedUser = safeUser;
+            }
+          }
+        }
+      }
+
+      // Set contentType if not set
+      if (!post.contentType) {
+        if (post.files && post.files.length > 0) {
+          const fileTypes = post.files.map(f => f.fileType || "").filter(Boolean);
+          const hasVideo = fileTypes.some(type => type.toLowerCase().includes("video"));
+          const hasImage = fileTypes.some(type => type.toLowerCase().includes("image"));
+          const hasAudio = fileTypes.some(type => type.toLowerCase().includes("audio"));
+
+          if (hasVideo && hasImage) {
+            post.contentType = "mixed_files";
+          } else if (hasVideo) {
+            post.contentType = "videos";
+          } else if (hasAudio) {
+            post.contentType = "vn";
+          } else if (hasImage) {
+            post.contentType = "mixed_files";
+          } else {
+            post.contentType = "text";
+          }
+        } else {
+          post.contentType = "text";
+        }
+      }
+    }
+
+    console.log("All Liked Posts fetched successfully:", posts.totalLikedPosts);
+
+    // Return posts directly (matching getFeed pattern)
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(200, posts, "All Liked Posts fetched successfully")
+      );
+  } catch (error) {
+    console.error("Error fetching liked posts:", error);
+    return res
+      .status(500)
+      .json(new ApiResponse(500, {}, `Error: ${error.message}`));
+  }
+});
