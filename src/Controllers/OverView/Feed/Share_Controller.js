@@ -111,3 +111,35 @@ const toggleShare = asyncHandler(async (req, res) => {
         );
     }
 });
+
+
+// Get all shares for a specific user (legacy - simple list)
+const getUserShares = asyncHandler(async (req, res) => {
+    try {
+        const userId = req.user?._id;
+        const { page = 1, limit = 10 } = req.query;
+
+        const userShares = await FeedShare.find({ sharedBy: userId })
+            .populate('postId')
+            .populate('sharedBy')
+            .sort({ createdAt: -1 })
+            .limit(parseInt(limit))
+            .skip((parseInt(page) - 1) * parseInt(limit));
+
+        const totalShares = await FeedShare.countDocuments({ sharedBy: userId });
+
+        return res.status(200).json(
+            new ApiResponse(200, {
+                shares: userShares,
+                totalShares,
+                currentPage: parseInt(page),
+                totalPages: Math.ceil(totalShares / parseInt(limit))
+            }, "User shares fetched successfully")
+        );
+    } catch (error) {
+        console.error("Get user shares error:", error);
+        return res.status(500).json(
+            new ApiResponse(500, {}, "Failed to fetch user shares")
+        );
+    }
+});
