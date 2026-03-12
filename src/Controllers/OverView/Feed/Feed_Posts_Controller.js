@@ -140,3 +140,28 @@ async function processPost(post) {
     }
   }
 }
+
+
+function isNotNullOrEmpty(obj) {
+  return obj !== null && obj !== undefined && Object.keys(obj).length > 0;
+}
+
+function processStringToArray(str) {
+  // Check if the string is neither null nor empty
+  if (str && str.trim() !== "") {
+    // Remove square brackets
+    const cleanedStr = str.replace(/[\[\]]/g, "");
+
+    // Split the string by commas and trim each item
+    const arr = cleanedStr.split(",").map(
+      (item) => item.trim().replace(/^"|"$/g, "") // Remove leading and trailing double quotes
+    );
+
+    return arr;
+  } else {
+    // Return an empty array if the string is null, undefined, or empty
+    return [];
+  }
+}
+
+
