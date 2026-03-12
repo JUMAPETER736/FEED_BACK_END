@@ -165,6 +165,388 @@ function processStringToArray(str) {
 }
 
 
+
+const createFeed = asyncHandler(async (req, res) => {
+  console.log("creating feed");
+
+  const {
+    content,
+    tags,
+    contentType,
+    duration,
+    numberOfPages,
+    fileNames,
+    fileTypes,
+    fileSizes,
+    feedShortsBusinessId,
+    // fileIds,
+  } = req.body;
+
+  const { fileIds } = req.body;
+
+  const author = req.user._id;
+
+  if (req.files) {
+    /**
+     * @type {{ url: string; localPath: string; }[]}
+     */
+    // console.log(req.files);
+    let files = {};
+    let durationData = {};
+    let fileTypesData = {};
+    let fileNamesData = {};
+    let fileSizeData = {};
+    let numberOfPagesData = {};
+    let fileIdsData = [];
+    console.log("step 1");
+    if (!isNotNullOrEmpty(duration)) {
+      console.log("duration is null or empty");
+    } else {
+      // console.log("You can map the duration object " + duration);
+      try {
+        console.log("duration insidetry type of duration " + typeof duration);
+        if (typeof duration === "string") {
+          const jsonData = JSON.parse(duration);
+          durationData = {
+            fileId: jsonData.fileId,
+            duration: jsonData.duration,
+          };
+        } else {
+          durationData = duration.map((durationObject) => {
+            const jsonData = JSON.parse(durationObject);
+            // console.log(`durationObject ${jsonData.fileId}`);
+            return { fileId: jsonData.fileId, duration: jsonData.duration };
+          });
+        }
+
+        // durationData = processDurationData(duration);
+        // console.log(processDurationData(duration));
+      } catch (error) {
+        console.log(`errror ${error}`);
+      }
+
+      // console.log(durationData);
+      // console.log("After mapping durationData type of:" + typeof durationData);
+    }
+
+    if (!isNotNullOrEmpty(fileTypes)) {
+      console.log("fileTypes is null or empty");
+    } else {
+      console.log("You can map the duration object " + fileTypes);
+      try {
+        console.log(
+          "fileTypes insidetry type of fileTypes " + typeof fileTypes
+        );
+        if (typeof fileTypes === "string") {
+          const jsonData = JSON.parse(fileTypes);
+          fileTypesData = {
+            fileId: jsonData.fileId,
+            fileType: jsonData.fileType,
+          };
+        } else {
+          fileTypesData = fileTypes.map((fileTypesObject) => {
+            const jsonData = JSON.parse(fileTypesObject);
+            // console.log(`durationObject ${jsonData.fileId}`);
+            return { fileId: jsonData.fileId, fileType: jsonData.fileType };
+          });
+        }
+
+        // durationData = processDurationData(duration);
+        // console.log(processDurationData(duration));
+      } catch (error) {
+        console.log(`errror ${error}`);
+      }
+
+      // console.log(durationData);
+      // console.log("After mapping durationData type of:" + typeof durationData);
+    }
+
+    if (!isNotNullOrEmpty(numberOfPages)) {
+      console.log("numberOfPages is null or empty");
+    } else {
+      console.log("You can map the numberOfPages object " + numberOfPages);
+      try {
+        console.log(
+          "numberOfPages insidetry type of numberOfPages " +
+          typeof numberOfPages
+        );
+        if (typeof numberOfPages === "string") {
+          const jsonData = JSON.parse(numberOfPages);
+          numberOfPagesData = {
+            fileId: jsonData.fileId,
+            numberOfPage: jsonData.numberOfPages,
+          };
+        } else {
+          numberOfPagesData = numberOfPages.map((numberOfPagesObject) => {
+            const jsonData = JSON.parse(numberOfPagesObject);
+            // console.log(`durationObject ${jsonData.fileId}`);
+            return {
+              fileId: jsonData.fileId,
+              numberOfPage: jsonData.numberOfPages,
+            };
+          });
+        }
+
+        // durationData = processDurationData(duration);
+        // console.log(processDurationData(duration));
+      } catch (error) {
+        console.log(`errror ${error}`);
+      }
+
+      // console.log(durationData);
+      // console.log("After mapping durationData type of:" + typeof durationData);
+    }
+
+    if (!isNotNullOrEmpty(fileNames)) {
+      console.log("fileNames is null or empty");
+    } else {
+      console.log("You can map the fileNames object " + fileNames);
+      try {
+        // console.log(
+        //   "fileNames insidetry type of fileNames " + typeof fileNames
+        // );
+        if (typeof fileNames === "string") {
+          const jsonData = JSON.parse(fileNames);
+          fileNamesData = {
+            fileId: jsonData.fileId,
+            fileName: jsonData.fileName,
+          };
+        } else {
+          fileNamesData = fileNames.map((fileNameObject) => {
+            const jsonData = JSON.parse(fileNameObject);
+            // console.log(`durationObject ${jsonData.fileId}`);
+            return { fileId: jsonData.fileId, fileName: jsonData.fileName };
+          });
+        }
+
+        // durationData = processDurationData(duration);
+        // console.log(processDurationData(duration));
+      } catch (error) {
+        console.log(`errror ${error}`);
+      }
+
+      // console.log(durationData);
+      // console.log("After mapping durationData type of:" + typeof durationData);
+    }
+
+    if (!isNotNullOrEmpty(fileSizes)) {
+      console.log("fileSizes is null or empty");
+    } else {
+      console.log("You can map the fileSizes object " + fileSizes);
+      try {
+        if (typeof fileSizes === "string") {
+          const jsonData = JSON.parse(fileSizes);
+          fileSizeData = {
+            fileId: jsonData.fileId,
+            fileSize: jsonData.fileSize,
+          };
+        } else {
+          fileSizeData = fileTypes.map((fileSizeObject) => {
+            const jsonData = JSON.parse(fileSizeObject);
+            // console.log(`durationObject ${jsonData.fileId}`);
+            return { fileId: jsonData.fileId, fileSize: jsonData.fileSize };
+          });
+        }
+
+      } catch (error) {
+        console.log(`errror ${error}`);
+      }
+    }
+
+    fileIdsData = processStringToArray(fileIds);
+
+
+    let position = -1;
+    if (contentType == "mixed_files") {
+      console.log("content type mixed files ");
+      console.log(req.files.files);
+      console.log("after loggging req.file");
+      files =
+        req.files.files && req.files.files?.length
+          ? req.files.files.map((file, index) => {
+            // const fileId = file.originalname;
+
+            const originalNameWithoutExt = path.parse(file.originalname).name;
+            // const fileId = fileIdsData[index] || null;
+            // console.log(`file index ${index} `);
+            // console.log(
+            //   `File type: ${fileTypesData[index].fileType} fileId: ${fileId}`
+            // );
+            position = index;
+            const fileUrl = getStaticMixedFilesFeedPath(req, file.filename);
+            console.log(`FILE URL ${fileUrl}`);
+            const fileLocalPath = getMixedFilesFeedImageLocalPath(
+              file.filename
+            );
+            return {
+              fileId: originalNameWithoutExt,
+              url: fileUrl,
+              localPath: fileLocalPath,
+            };
+          })
+          : [];
+      // console.log("content type mixed files");
+      // console.log(typeof files);
+    } else if (contentType == "image") {
+      files =
+        req.files.files && req.files.files?.length
+          ? req.files.files.map((file) => {
+            const fileUrl = getStaticFeedImagePath(req, file.filename);
+            const fileLocalPath = getFeedImageLocalPath(file.filename);
+            return { url: fileUrl, localPath: fileLocalPath };
+          })
+          : [];
+      // console.log(typeof files);
+    } else if (contentType == "audio") {
+      files =
+        req.files.files && req.files.files?.length
+          ? req.files.files.map((file) => {
+            const fileUrl = getStaticFeedAudioPath(req, file.filename);
+            const fileLocalPath = getFeedAudioLocalPath(file.filename);
+            return { url: fileUrl, localPath: fileLocalPath };
+          })
+          : [];
+    } else if (contentType == "video") {
+      files =
+        req.files.files && req.files.files?.length
+          ? req.files.files.map((file) => {
+            const fileUrl = getStaticFeedVideoPath(req, file.filename);
+            const fileLocalPath = getFeedVideoLocalPath(file.filename);
+            return { url: fileUrl, localPath: fileLocalPath };
+          })
+          : [];
+    } else if (contentType == "docs") {
+      files =
+        req.files.files && req.files.files?.length
+          ? req.files.files.map((file) => {
+            const fileUrl = getStaticFeedDocsPath(req, file.filename);
+            const fileLocalPath = getFeedDocsLocalPath(file.filename);
+            return { url: fileUrl, localPath: fileLocalPath };
+          })
+          : [];
+    }
+
+    else if (contentType == "vn") {
+      files =
+        req.files.files && req.files.files?.length
+          ? req.files.files.map((file) => {
+            const fileUrl = getStaticFeedVnPath(req, file.filename);
+            const fileLocalPath = getFeedVnLocalPath(file.filename);
+            return { url: fileUrl, localPath: fileLocalPath };
+          })
+          : [];
+    }
+
+
+
+
+    else if (contentType == "multiple_images") {
+      files =
+        req.files.files && req.files.files?.length
+          ? req.files.files.map((file) => {
+            const fileUrl = getStaticFeedMultipleImagePath(
+              req,
+              file.filename
+            );
+            const fileLocalPath = getFeedMultipleImageLocalPath(
+              file.filename
+            );
+            return { url: fileUrl, localPath: fileLocalPath };
+          })
+          : [];
+    }
+
+    /**
+     * @type {{ thumbnailUrl: string; thumbnailLocalPath: string; }[]}
+     */
+ 
+    const thumbnail =
+      req.files.feed_thumbnail && req.files.feed_thumbnail?.length
+        ? req.files.feed_thumbnail.map((image, index) => {
+          // const fileId = fileIdsData[index] || null;
+          const originalNameWithoutExt = path.parse(image.originalname).name;
+
+          // console.log(
+          //   `index ${index} position ${position} file ids ${fileIdsData}`
+          // );
+          // console.log("Getting some thumbnails fileId " + fileId);
+          const imageUrl = getStaticFeedThumbnailPath(req, image.filename);
+          const imageLocalPath = getFeedThumbnailLocalPath(image.filename);
+
+          // console.log("Getting some thumbnails image url " + imageUrl);
+          return {
+            fileId: originalNameWithoutExt,
+            thumbnailUrl: imageUrl,
+            thumbnailLocalPath: imageLocalPath,
+          };
+        })
+        : [];
+
+    // console.log("Ready to create feed thumbnail" + thumbnail);
+    // console.log(thumbnail);
+    console.log("feedShortsBusinessId", feedShortsBusinessId);
+
+
+    const post = await FeedPost.create({
+      content: content,
+      duration: durationData,
+      tags: tags || [],
+      author: author,
+      files: files,
+      thumbnail: thumbnail,
+      contentType: contentType,
+      numberOfPages: numberOfPagesData,
+      fileNames: fileNamesData,
+      fileTypes: fileTypesData,
+      fileIds: fileIdsData,
+      fileSizes: fileSizeData,
+      feedShortsBusinessId: feedShortsBusinessId,
+      // fileIds: fileIds,
+    });
+    if (!post) {
+      throw new ApiError(500, "Error while creating feed");
+    }
+
+    const createdPost = await FeedPost.aggregate([
+      {
+        $match: {
+          _id: post._id,
+        },
+      },
+      ...feedCommonAggregation(req),
+    ]);
+
+    console.log("Feed created");
+    return res
+      .status(201)
+      .json(new ApiResponse(201, createdPost[0], "Feed created successfully"));
+  } else {
+    const post = await FeedPost.create({
+      content: content,
+      tags: tags || [],
+      author: author,
+      contentType: contentType,
+    });
+
+    if (!post) {
+      throw new ApiError(500, "Error while creating feed");
+    }
+
+    const createdPost = await FeedPost.aggregate([
+      {
+        $match: {
+          _id: post._id,
+        },
+      },
+      ...feedCommonAggregation(req),
+    ]);
+
+    return res
+      .status(201)
+      .json(new ApiResponse(201, createdPost[0], "Feed created successfully"));
+  }
+});
+
 const getPostById = asyncHandler(async (req, res) => {
   try {
 
@@ -416,3 +798,5 @@ const getPostById = asyncHandler(async (req, res) => {
   }
 
 });
+
+
