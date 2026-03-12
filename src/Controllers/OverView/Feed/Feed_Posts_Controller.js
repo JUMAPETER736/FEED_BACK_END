@@ -1545,3 +1545,78 @@ const getBookMarkedPosts = asyncHandler(async (req, res) => {
       .json(new ApiResponse(500, {}, `Error: ${error.message}`));
   }
 });
+
+const clickedBookmark = asyncHandler(async (req, res) => {
+  const { postId } = req.params;
+  const { isBookmarked } = req.body;
+
+  console.log(`clicked bookmark - Post: ${postId}, User: ${req.user?._id}, Action: ${isBookmarked ? 'BOOKMARK' : 'UNBOOKMARK'}`);
+
+  try {
+    const userId = new mongoose.Types.ObjectId(req.user?._id);
+    const postObjectId = new mongoose.Types.ObjectId(postId);
+
+    // Verify post exists
+    const post = await FeedPost.findById(postObjectId);
+    if (!post) {
+      console.log(`Post not found: ${postId}`);
+      return res
+        .status(404)
+        .json(new ApiResponse(404, {}, "Post not found"));
+    }
+
+    // Check if bookmark exists
+    const existingBookmark = await FeedBookmark.findOne({
+      postId: postObjectId,
+      bookmarkedBy: userId
+    });
+
+    console.log(`Existing bookmark: ${existingBookmark ? 'YES' : 'NO'}`);
+
+    let message;
+    let bookmarked;
+
+    if (isBookmarked && !existingBookmark) {
+      // Create bookmark
+      const newBookmark = await FeedBookmark.create({
+        postId: postObjectId,
+        bookmarkedBy: userId
+      });
+      message = "Post bookmarked successfully";
+      bookmarked = true;
+      console.log(`Bookmark created: ${newBookmark._id}`);
+    } else if (!isBookmarked && existingBookmark) {
+      // Remove bookmark
+      await FeedBookmark.findByIdAndDelete(existingBookmark._id);
+      message = "Bookmark removed successfully";
+      bookmarked = false;
+      console.log(`Bookmark deleted: ${existingBookmark._id}`);
+    } else {
+      // State already matches - no change needed
+      message = existingBookmark ? "Post already bookmarked" : "Bookmark already removed";
+      bookmarked = !!existingBookmark;
+      console.log(`No change needed - already ${bookmarked ? 'bookmarked' : 'not bookmarked'}`);
+    }
+
+    // Get updated bookmark count
+    const bookmarkCount = await FeedBookmark.countDocuments({
+      postId: postObjectId
+    });
+
+    console.log(`Total bookmarks for post ${postId}: ${bookmarkCount}`);
+
+    return res.status(200).json(
+      new ApiResponse(200, {
+        isBookmarked: bookmarked,
+        bookmarkCount: bookmarkCount,
+        postId: postId
+      }, message)
+    );
+
+  } catch (error) {
+    console.error(" Error toggling bookmark:", error);
+    return res
+      .status(500)
+      .json(new ApiResponse(500, {}, `Error: ${error.message}`));
+  }
+});
