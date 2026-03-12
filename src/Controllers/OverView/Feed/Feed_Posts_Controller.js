@@ -2054,3 +2054,349 @@ const getRepostedPosts = asyncHandler(async (req, res) => {
       .json(new ApiResponse(500, {}, `Error: ${error.message}`));
   }
 });
+
+
+const getSharedPosts = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10 } = req.query;
+
+  console.log("Starting getSharedPosts for user:", req.user?._id);
+
+  try {
+    const userId = new mongoose.Types.ObjectId(req.user?._id);
+
+    // Start aggregation from FeedShare
+    const postAggregation = FeedShare.aggregate([
+      // Match only shares by current user
+      {
+        $match: {
+          sharedBy: userId,
+        },
+      },
+      // Sort by when they shared (most recent first)
+      {
+        $sort: { createdAt: -1 },
+      },
+      // Lookup the post
+      {
+        $lookup: {
+          from: "feedposts",
+          localField: "postId",
+          foreignField: "_id",
+          as: "post",
+        },
+      },
+      // Unwind the post
+      {
+        $unwind: {
+          path: "$post",
+          preserveNullAndEmptyArrays: false,
+        },
+      },
+      // Store share metadata before replacing root
+      {
+        $addFields: {
+          "post.shareId": "$_id",
+          "post.sharedBy": "$sharedBy",
+          "post.sharedAt": "$createdAt",
+          "post.shareMethod": "$shareMethod",
+          "post.shareNote": "$shareNote"
+        }
+      },
+      // Replace root with post
+      {
+        $replaceRoot: {
+          newRoot: "$post"
+        }
+      },
+
+      // Apply feedCommonAggregation if available
+      ...feedCommonAggregation(req),
+
+      // ============================================
+      // LIKES AGGREGATION
+      // ============================================
+      {
+        $lookup: {
+          from: "feedlikes",
+          localField: "_id",
+          foreignField: "postId",
+          as: "postLikes"
+        }
+      },
+      {
+        $addFields: {
+          likedByUserIds: {
+            $map: {
+              input: "$postLikes",
+              as: "like",
+              in: "$$like.likedBy"
+            }
+          },
+          likes: { $size: "$postLikes" },
+          isLiked: {
+            $in: [userId, "$postLikes.likedBy"]
+          }
+        }
+      },
+      {
+        $project: {
+          postLikes: 0
+        }
+      },
+
+      // ============================================
+      // BOOKMARKS AGGREGATION
+      // ============================================
+      {
+        $lookup: {
+          from: "feedbookmarks",
+          localField: "_id",
+          foreignField: "postId",
+          as: "bookmarks"
+        }
+      },
+      {
+        $addFields: {
+          bookmarkedByUserIds: "$bookmarks.bookmarkedBy",
+          bookmarkCount: { $size: "$bookmarks" },
+          isBookmarked: {
+            $in: [userId, "$bookmarks.bookmarkedBy"]
+          }
+        }
+      },
+      {
+        $project: {
+          bookmarks: 0
+        }
+      },
+
+      // ============================================
+      // REPOSTS AGGREGATION - FIXED
+      // ============================================
+      {
+        $lookup: {
+          from: "feedposts",  // ✅ FIXED: Changed from "feedretweets" to "feedposts"
+          localField: "_id",
+          foreignField: "originalPostId",
+          as: "postReposts"
+        }
+      },
+      {
+        $addFields: {
+          repostedByUserIds: {
+            $map: {
+              input: "$postReposts",
+              as: "repost",
+              in: "$$repost.repostedByUserId"
+            }
+          },
+          repostCount: { $size: "$postReposts" },
+          isRepostedByMe: {
+            $in: [userId, {
+              $map: {
+                input: "$postReposts",
+                as: "repost",
+                in: "$$repost.repostedByUserId"
+              }
+            }]
+          }
+        }
+      },
+      {
+        $project: {
+          postReposts: 0
+        }
+      },
+
+      // ============================================
+      // SHARES AGGREGATION
+      // ============================================
+      {
+        $lookup: {
+          from: "feedshares",
+          localField: "_id",
+          foreignField: "postId",
+          as: "postShares"
+        }
+      },
+      {
+        $addFields: {
+          sharedByUserIds: {
+            $map: {
+              input: "$postShares",
+              as: "share",
+              in: "$$share.sharedBy"
+            }
+          },
+          shareCount: { $size: "$postShares" },
+          isShared: true // Always true since we're fetching shared posts
+        }
+      },
+      {
+        $project: {
+          postShares: 0
+        }
+      }
+    ]);
+
+    console.log("Executing aggregation with pagination");
+
+    const posts = await FeedShare.aggregatePaginate(
+      postAggregation,
+      getMongoosePaginationOptions({
+        page: parseInt(page),
+        limit: parseInt(limit),
+        customLabels: {
+          totalDocs: "totalSharedPosts",
+          docs: "sharedPosts",
+        },
+      })
+    );
+
+    // Post-processing for reposted posts (same as getAllFeed)
+    for (let post of posts.sharedPosts) {
+      if (post.isReposted && post.originalPostId) {
+        const originalPost = await FeedPost.findById(post.originalPostId);
+
+        if (originalPost) {
+          const author = await SocialProfile.findById(originalPost.author)
+            .populate('owner');
+
+          if (author) {
+            post.author = {
+              _id: author._id,
+              coverImage: author.coverImage,
+              firstName: author.firstName,
+              lastName: author.lastName,
+              bio: author.bio,
+              dob: author.dob,
+              location: author.location,
+              countryCode: author.countryCode,
+              phoneNumber: author.phoneNumber,
+              owner: author.owner,
+              createdAt: author.createdAt,
+              updatedAt: author.updatedAt,
+              __v: author.__v,
+            };
+
+            if (author.owner) {
+              post.author.account = {
+                _id: author.owner._id,
+                avatar: author.owner.avatar,
+                username: author.owner.username,
+                email: author.owner.email,
+                createdAt: author.owner.createdAt,
+                updatedAt: author.owner.updatedAt
+              };
+            }
+
+            post.content = originalPost.content || post.content;
+            post.tags = originalPost.tags || post.tags;
+            post.fileIds = originalPost.fileIds || post.fileIds;
+            post.files = originalPost.files || post.files;
+            post.contentType = originalPost.contentType || post.contentType;
+
+            if (!post.contentType) {
+              post.contentType = "text";
+            }
+
+            if (!post.originalPost) {
+              post.originalPost = [];
+            }
+
+            if (post.originalPost.length === 0) {
+              post.originalPost.push({
+                _id: originalPost._id,
+                author: post.author,
+                content: originalPost.content,
+                contentType: originalPost.contentType,
+                files: originalPost.files,
+                fileIds: originalPost.fileIds,
+                tags: originalPost.tags,
+                createdAt: originalPost.createdAt,
+              });
+            }
+
+            post.comments = originalPost.comments || post.comments;
+            post.likes = originalPost.likes || post.likes;
+            post.reposts = originalPost.reposts || post.reposts;
+            post.repostedUsersCount = originalPost.repostedUsersCount || post.repostedUsersCount;
+          }
+
+          if (post.repostedByUserId) {
+            const repostedByUser = await User.findById(post.repostedByUserId);
+
+            if (repostedByUser) {
+              const repostedUserProfile = await SocialProfile.findOne({
+                owner: repostedByUser._id
+              });
+
+              const safeUser = {
+                _id: repostedUserProfile?._id || repostedByUser._id,
+                username: repostedByUser.username,
+                email: repostedByUser.email,
+                createdAt: repostedByUser.createdAt,
+                updatedAt: repostedByUser.updatedAt,
+              };
+
+              if (repostedByUser.avatar) {
+                safeUser.avatar = {
+                  url: repostedByUser.avatar.url,
+                  localPath: repostedByUser.avatar.localPath,
+                  _id: repostedByUser.avatar._id,
+                };
+              }
+
+              if (repostedUserProfile) {
+                safeUser.coverImage = repostedUserProfile.coverImage;
+                safeUser.firstName = repostedUserProfile.firstName;
+                safeUser.lastName = repostedUserProfile.lastName;
+                safeUser.bio = repostedUserProfile.bio;
+                safeUser.owner = repostedByUser._id;
+              }
+
+              post.repostedUser = safeUser;
+            }
+          }
+        }
+      }
+
+      // Set contentType if not set
+      if (!post.contentType) {
+        if (post.files && post.files.length > 0) {
+          const fileTypes = post.files.map(f => f.fileType || "").filter(Boolean);
+          const hasVideo = fileTypes.some(type => type.toLowerCase().includes("video"));
+          const hasImage = fileTypes.some(type => type.toLowerCase().includes("image"));
+          const hasAudio = fileTypes.some(type => type.toLowerCase().includes("audio"));
+
+          if (hasVideo && hasImage) {
+            post.contentType = "mixed_files";
+          } else if (hasVideo) {
+            post.contentType = "videos";
+          } else if (hasAudio) {
+            post.contentType = "vn";
+          } else if (hasImage) {
+            post.contentType = "mixed_files";
+          } else {
+            post.contentType = "text";
+          }
+        } else {
+          post.contentType = "text";
+        }
+      }
+    }
+
+    console.log("All Shared Posts fetched successfully:", posts.totalSharedPosts);
+
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(200, posts, "All Shared Posts fetched successfully")
+      );
+  } catch (error) {
+    console.error("Error fetching shared posts:", error);
+    return res
+      .status(500)
+      .json(new ApiResponse(500, {}, `Error: ${error.message}`));
+  }
+});
