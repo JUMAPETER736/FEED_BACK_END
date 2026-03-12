@@ -143,3 +143,43 @@ const getUserShares = asyncHandler(async (req, res) => {
         );
     }
 });
+
+
+
+
+// Get all users who shared a specific post
+const getPostShares = asyncHandler(async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const { page = 1, limit = 10 } = req.query;
+
+        // Validate postId
+        if (!mongoose.Types.ObjectId.isValid(postId)) {
+            throw new ApiError(400, "Invalid post ID");
+        }
+
+        const shares = await FeedShare.find({ postId })
+            .populate('sharedBy')
+            .sort({ createdAt: -1 })
+            .limit(parseInt(limit))
+            .skip((parseInt(page) - 1) * parseInt(limit));
+
+        const totalShares = await FeedShare.countDocuments({ postId });
+
+        return res.status(200).json(
+            new ApiResponse(200, {
+                shares,
+                totalShares,
+                currentPage: parseInt(page),
+                totalPages: Math.ceil(totalShares / parseInt(limit))
+            }, "Post shares fetched successfully")
+        );
+    } catch (error) {
+        console.error("Get post shares error:", error);
+        return res.status(500).json(
+            new ApiResponse(500, {}, "Failed to fetch post shares")
+        );
+    }
+});
+
+
