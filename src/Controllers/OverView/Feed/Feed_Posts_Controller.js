@@ -2676,3 +2676,367 @@ const getSearchAllFeed = asyncHandler(async (req, res) => {
     );
   }
 });
+
+
+const getSearchAllFeedByUserId = asyncHandler(async (req, res) => {
+  const { username } = req.params;
+  const { page = 1, limit = 50 } = req.query;
+
+  console.log('\n\n');
+  console.log('================================================================================');
+  console.log('SEARCH REQUEST FOR USERNAME:', username);
+  console.log('Timestamp:', new Date().toISOString());
+  console.log('Page:', page, '| Limit:', limit);
+  console.log('================================================================================');
+  console.log('\n');
+
+  try {
+    // ========================================
+    // STEP 1: Find matching users by username
+    // ========================================
+    console.log('Searching for users matching "' + username + '"...');
+    console.log('--------------------------------------------------------------------------------');
+
+    const matchingUsers = await User.find({
+      username: { $regex: username, $options: "i" }
+    }).limit(20);
+
+    console.log('Found', matchingUsers.length, 'matching user(s) in User collection\n');
+
+    if (!matchingUsers || matchingUsers.length === 0) {
+      console.log('No users found matching "' + username + '"\n');
+      return res.status(404).json(
+        new ApiResponse(404, {
+          posts: [],
+          totalPosts: 0,
+          matchingUsers: [],
+          searchedUsername: username
+        }, `No users found matching '${username}'`)
+      );
+    }
+
+    // Log each found user with their ID
+    matchingUsers.forEach((user, index) => {
+      console.log('   ' + (index + 1) + '. 👤 Username:', user.username);
+      console.log('      User ID:', user._id.toString());
+      console.log('      Email:', user.email);
+      console.log('');
+    });
+
+    // ========================================
+    // STEP 2: Get User IDs
+    // ========================================
+    const userIds = matchingUsers.map(user => user._id);
+    console.log('\nExtracted', userIds.length, 'User ID(s):');
+    console.log('--------------------------------------------------------------------------------');
+    userIds.forEach((id, index) => {
+      console.log('   ' + (index + 1) + '.', id.toString());
+    });
+    console.log('');
+
+    // ========================================
+    // STEP 3: Find SocialProfiles for these users
+    // CRITICAL: Posts.author references SocialProfile._id, NOT User._id
+    // ========================================
+    console.log('\nSearching for SocialProfiles owned by these users...');
+    console.log('--------------------------------------------------------------------------------');
+
+    const socialProfiles = await SocialProfile.find({
+      owner: { $in: userIds }
+    });
+
+    const socialProfileIds = socialProfiles.map(profile => profile._id);
+
+    console.log('Found', socialProfiles.length, 'social profile(s)\n');
+
+    socialProfiles.forEach((profile, index) => {
+      console.log('   ' + (index + 1) + '. 🎭 Profile Name:', profile.firstName, profile.lastName);
+      console.log('       SocialProfile ID:', profile._id.toString());
+      console.log('       Owner (User ID):', profile.owner.toString());
+      console.log('');
+    });
+
+    if (socialProfileIds.length === 0) {
+      console.log('No social profiles found for these users\n');
+      return res.status(200).json(
+        new ApiResponse(200, {
+          posts: [],
+          totalPosts: 0,
+          matchingUsers: matchingUsers.map(u => ({
+            _id: u._id,
+            username: u.username,
+            email: u.email
+          })),
+          searchedUsername: username
+        }, `User '${username}' has no social profile`)
+      );
+    }
+
+    // ========================================
+    // STEP 4: Count posts using SocialProfile IDs
+    // ========================================
+    console.log('\nCounting posts where author is in SocialProfile IDs...');
+    console.log('--------------------------------------------------------------------------------');
+    console.log('');
+
+    // CRITICAL FIX: Search by SocialProfile IDs, not User IDs
+    const totalPostCount = await FeedPost.countDocuments({
+      author: { $in: socialProfileIds }
+    });
+
+    console.log('');
+    console.log('================================================================================');
+    console.log('TOTAL POSTS COUNT:', totalPostCount);
+    console.log('================================================================================');
+    console.log('Posts found with author in SocialProfile IDs:', totalPostCount);
+    console.log('================================================================================');
+    console.log('');
+
+    // ========================================
+    // STEP 5: Sample posts to verify author IDs
+    // ========================================
+    console.log('\nSampling first 5 posts to verify author IDs...');
+    console.log('--------------------------------------------------------------------------------');
+    console.log('');
+
+    const samplePosts = await FeedPost.find({
+      author: { $in: socialProfileIds }
+    }).limit(5).select('_id author createdAt content');
+
+    if (samplePosts.length > 0) {
+      samplePosts.forEach((post, index) => {
+        console.log('   ' + (index + 1) + '. Post ID:', post._id.toString());
+        console.log('      Author ID:', post.author.toString());
+        console.log('      Created:', post.createdAt);
+        console.log('      Content Preview:', post.content?.substring(0, 50) || '(no content)', '...');
+
+        // Check if this author ID is in our socialProfileIds
+        const isSocialProfileId = socialProfileIds.some(id => id.toString() === post.author.toString());
+
+        if (isSocialProfileId) {
+          console.log('      ✓ Author is a SocialProfile ID - MATCH FOUND');
+        } else {
+          console.log('      ✗ WARNING: Author ID doesn\'t match searched SocialProfile IDs!');
+        }
+        console.log('');
+      });
+    } else {
+      console.log('   No sample posts found');
+      console.log('');
+    }
+
+    if (totalPostCount === 0) {
+      console.log('User "' + username + '" found but has NO posts\n');
+      return res.status(200).json(
+        new ApiResponse(200, {
+          posts: [],
+          totalPosts: 0,
+          limit: parseInt(limit),
+          page: parseInt(page),
+          totalPages: 0,
+          hasNextPage: false,
+          hasPrevPage: false,
+          matchingUsers: matchingUsers.map(u => ({
+            _id: u._id,
+            username: u.username,
+            email: u.email
+          })),
+          searchedUsername: username,
+          debug: {
+            userIds: userIds.map(id => id.toString()),
+            socialProfileIds: socialProfileIds.map(id => id.toString()),
+            totalPostCount
+          }
+        }, `User '${username}' found but has no posts`)
+      );
+    }
+
+    // ========================================
+    // STEP 6: Run aggregation with SocialProfile IDs (using feedAggregation like getFeed)
+    // ========================================
+    console.log('\nRunning aggregation pipeline...');
+    console.log('--------------------------------------------------------------------------------');
+    console.log('');
+    console.log('Building query to search for posts where author is in SocialProfile IDs:');
+    console.log('   SocialProfile IDs:', socialProfileIds.map(id => id.toString()).join(', '));
+    console.log('');
+
+    const postAggregation = FeedPost.aggregate([
+      // CRITICAL FIX: Match posts by SocialProfile IDs only
+      {
+        $match: {
+          author: { $in: socialProfileIds }
+        }
+      },
+
+      // Apply feedAggregation (same as getFeed uses)
+      ...feedAggregation(req),
+
+      // Add relevance scoring
+      {
+        $addFields: {
+          usernameRelevance: {
+            $sum: [
+              {
+                $cond: [
+                  {
+                    $eq: [
+                      { $toLower: { $ifNull: ["$author.account.username", ""] } },
+                      username.toLowerCase()
+                    ]
+                  },
+                  100,
+                  0
+                ]
+              },
+              {
+                $cond: [
+                  {
+                    $regexMatch: {
+                      input: { $ifNull: ["$author.account.username", ""] },
+                      regex: `^${username}`,
+                      options: "i"
+                    }
+                  },
+                  80,
+                  0
+                ]
+              },
+              {
+                $cond: [
+                  {
+                    $regexMatch: {
+                      input: { $ifNull: ["$author.account.username", ""] },
+                      regex: username,
+                      options: "i"
+                    }
+                  },
+                  50,
+                  0
+                ]
+              }
+            ]
+          }
+        }
+      },
+
+      // Sort by relevance then date (same as getFeed sorts by createdAt)
+      { $sort: { usernameRelevance: -1, createdAt: -1 } }
+    ]);
+
+    console.log('Executing aggregation with pagination...');
+
+    // Execute pagination
+    const posts = await FeedPost.aggregatePaginate(
+      postAggregation,
+      getMongoosePaginationOptions({
+        page,
+        limit,
+        customLabels: {
+          totalDocs: "totalPosts",
+          docs: "posts",
+        },
+      })
+    );
+
+    console.log('Aggregation complete!');
+    console.log('   Current page:', posts.page, 'of', posts.totalPages);
+    console.log('   Posts on this page:', posts.posts.length);
+    console.log('   Total posts found by aggregation:', posts.totalPosts);
+    console.log('');
+
+    // ========================================
+    // STEP 7: Log author IDs of returned posts
+    // ========================================
+    console.log('\nAnalyzing returned posts author IDs...');
+    console.log('--------------------------------------------------------------------------------');
+    console.log('');
+
+    if (posts.posts.length > 0) {
+      posts.posts.forEach((post, index) => {
+        console.log('   ' + (index + 1) + '. Post ID:', post._id);
+        console.log('      Author._id (SocialProfile):', post.author?._id || 'N/A');
+        console.log('      Author.owner (User):', post.author?.owner || 'N/A');
+        console.log('      Username:', post.author?.account?.username || 'N/A');
+        console.log('      Created:', post.createdAt);
+        console.log('');
+      });
+    } else {
+      console.log('   No posts returned after aggregation');
+      console.log('');
+    }
+
+    // ========================================
+    // STEP 8: Process posts (same as getFeed would)
+    // ========================================
+    console.log('\nProcessing', posts.posts.length, 'posts (handling reposts, contentType)...');
+    console.log('--------------------------------------------------------------------------------');
+    console.log('');
+
+    for (let post of posts.posts) {
+      await processPost(post);
+    }
+
+    console.log('Post processing complete!');
+    console.log('');
+
+    // ========================================
+    // STEP 9: Prepare response (matching getFeed structure)
+    // ========================================
+    const responseData = {
+      data: {
+        posts: posts.posts,
+        totalPosts: posts.totalPosts,
+        limit: posts.limit,
+        page: posts.page,
+        totalPages: posts.totalPages,
+        hasNextPage: posts.hasNextPage,
+        hasPrevPage: posts.hasPrevPage,
+      },
+      matchingUsers: matchingUsers.map(u => ({
+        _id: u._id,
+        username: u.username,
+        email: u.email
+      })),
+      searchedUsername: username,
+      debug: {
+        userIds: userIds.map(id => id.toString()),
+        socialProfileIds: socialProfileIds.map(id => id.toString()),
+        totalPostCount,
+        postsReturnedAfterAggregation: posts.posts.length,
+        currentPage: posts.page,
+        totalPages: posts.totalPages
+      }
+    };
+
+    console.log('\n');
+    console.log('================================================================================');
+    console.log('SEARCH COMPLETE');
+    console.log('================================================================================');
+    console.log('Search term:', username);
+    console.log('Users found:', matchingUsers.length);
+    console.log('SocialProfile IDs searched:', socialProfileIds.length);
+    console.log('Total posts found:', totalPostCount);
+    console.log('Posts returned on page', page + ':', posts.posts.length);
+    console.log('================================================================================');
+    console.log('\n\n');
+
+    return res.status(200).json(
+      new ApiResponse(200, responseData, `Found ${posts.totalPosts} posts for '${username}'`)
+    );
+
+  } catch (e) {
+    console.log('\n');
+    console.log('================================================================================');
+    console.log('ERROR IN SEARCH');
+    console.log('================================================================================');
+    console.log('Error message:', e.message);
+    console.log('Stack trace:', e.stack);
+    console.log('================================================================================');
+    console.log('\n');
+
+    return res.status(500).json(
+      new ApiResponse(500, { error: e.message }, "Error fetching posts")
+    );
+  }
+});
