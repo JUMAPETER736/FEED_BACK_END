@@ -196,6 +196,53 @@ const feedCommonAggregation = (req) => {
     },
 
 
+     // STEP 7: Follow status
+    {
+      $lookup: {
+        from: "socialfollows",
+        let: { authorId: "$author" },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$followerId", userId] },
+                  { $eq: ["$followeeId", "$$authorId"] },
+                ],
+              },
+            },
+          },
+          { $project: { _id: 1 } },
+        ],
+        as: "isFollowing",
+      },
+    },
+    { $addFields: { isFollowing: { $gt: [{ $size: "$isFollowing" }, 0] } } },
+
+    // STEP 8: Close friends
+    {
+      $lookup: {
+        from: "socialclosefriends",
+        let: { authorId: "$author" },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$userId", userId] },
+                  { $eq: ["$closeFriendId", "$$authorId"] },
+                ],
+              },
+            },
+          },
+          { $project: { _id: 1 } },
+        ],
+        as: "isCloseFriendArray",
+      },
+    },
+    { $addFields: { isInCloseFriends: { $gt: [{ $size: "$isCloseFriendArray" }, 0] } } },
+    { $project: { isCloseFriendArray: 0 } },
+
 
     ];
 };
