@@ -417,6 +417,190 @@ const feedCommonAggregation = (req) => {
     },
 
 
+     // STEP 15: Lookup ORIGINAL POST
+    // Uses _safeOriginalPostId so standalone posts (repostedByUserId=null)
+    // never match anything → originalPost = []
+    {
+      $addFields: {
+        _safeOriginalPostId: {
+          $cond: {
+            if: { $ne: ["$repostedByUserId", null] },
+            then: "$originalPostId",
+            else: "$$REMOVE",
+          },
+        },
+      },
+    },
+    {
+      $lookup: {
+        from: "feedposts",
+        localField: "_safeOriginalPostId",
+        foreignField: "_id",
+        as: "originalPost",
+        pipeline: [
+          {
+            $lookup: {
+              from: "socialprofiles",
+              localField: "author",
+              foreignField: "owner",
+              as: "authorProfile",
+            },
+          },
+          { $unwind: { path: "$authorProfile", preserveNullAndEmptyArrays: true } },
+          {
+            $lookup: {
+              from: "users",
+              localField: "authorProfile.owner",
+              foreignField: "_id",
+              as: "authorAccount",
+            },
+          },
+          { $unwind: { path: "$authorAccount", preserveNullAndEmptyArrays: true } },
+          {
+            $lookup: {
+              from: "feedcomments",
+              localField: "_id",
+              foreignField: "postId",
+              as: "comments",
+            },
+          },
+          {
+            $lookup: {
+              from: "feedlikes",
+              localField: "_id",
+              foreignField: "postId",
+              as: "likes",
+            },
+          },
+          {
+            $lookup: {
+              from: "feedbookmarks",
+              localField: "_id",
+              foreignField: "postId",
+              as: "bookmarks",
+            },
+          },
+          {
+            $lookup: {
+              from: "feedposts",
+              let: { origId: "$_id" },
+              pipeline: [
+                {
+                  $match: {
+                    $expr: {
+                      $and: [
+                        { $eq: ["$originalPostId", "$$origId"] },
+                        { $ne: ["$repostedByUserId", null] }
+                      ]
+                    }
+                  }
+                }
+              ],
+              as: "reposts",
+            },
+          },
+          {
+            $lookup: {
+              from: "feedshares",
+              localField: "_id",
+              foreignField: "postId",
+              as: "shares",
+            },
+          },
+          {
+            $lookup: {
+              from: "users",
+              let: { reposterIds: "$reposts.repostedByUserId" },
+              pipeline: [
+                { $match: { $expr: { $in: ["$_id", "$$reposterIds"] } } },
+                {
+                  $lookup: {
+                    from: "socialprofiles",
+                    localField: "_id",
+                    foreignField: "owner",
+                    as: "profile",
+                  },
+                },
+                { $unwind: { path: "$profile", preserveNullAndEmptyArrays: true } },
+                {
+                  $project: {
+                    _id: 1,
+                    avatar: 1,
+                    username: 1,
+                    email: 1,
+                    createdAt: 1,
+                    updatedAt: 1,
+                    coverImage: "$profile.coverImage",
+                    firstName: "$profile.firstName",
+                    lastName: "$profile.lastName",
+                    bio: "$profile.bio",
+                    owner: "$_id",
+                  },
+                },
+              ],
+              as: "originalPostReposter",
+            },
+          },
+          {
+            $project: {
+              _id: 1,
+              __v: 1,
+              content: 1,
+              duration: 1,
+              feedShortsBusinessId: 1,
+              tags: 1,
+              contentType: 1,
+              numberOfPages: 1,
+              fileNames: 1,
+              fileTypes: 1,
+              fileSizes: 1,
+              files: 1,
+              fileIds: 1,
+              thumbnail: 1,
+              createdAt: 1,
+              updatedAt: 1,
+              originalPostId: { $literal: null },
+              isReposted: { $literal: false },
+              repostedByUserId: { $literal: null },
+              repostedUsers: { $literal: [] },
+              author: {
+                _id: "$authorProfile._id",
+                coverImage: "$authorProfile.coverImage",
+                firstName: "$authorProfile.firstName",
+                lastName: "$authorProfile.lastName",
+                bio: "$authorProfile.bio",
+                dob: "$authorProfile.dob",
+                location: "$authorProfile.location",
+                countryCode: "$authorProfile.countryCode",
+                phoneNumber: "$authorProfile.phoneNumber",
+                owner: "$authorProfile.owner",
+                createdAt: "$authorProfile.createdAt",
+                updatedAt: "$authorProfile.updatedAt",
+                __v: "$authorProfile.__v",
+                account: {
+                  _id: "$authorAccount._id",
+                  avatar: "$authorAccount.avatar",
+                  username: "$authorAccount.username",
+                  email: "$authorAccount.email",
+                  createdAt: "$authorAccount.createdAt",
+                  updatedAt: "$authorAccount.updatedAt",
+                },
+              },
+              originalPostReposter: "$originalPostReposter",
+              bookmarks: "$bookmarks",
+              commentCount: { $size: "$comments" },
+              likeCount: { $size: "$likes" },
+              bookmarkCount: { $size: "$bookmarks" },
+              repostCount: { $size: "$reposts" },
+              shareCount: { $size: "$shares" },
+            },
+          },
+        ],
+      },
+    },
+
+
+    
 
 
     ];
