@@ -1685,3 +1685,67 @@ if (!isNotNullOrEmpty(fileTypes)) {
 
     }
 });
+
+
+
+
+const getAllFeed = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10 } = req.query;
+
+
+ const postAggregation = FeedPost.aggregate([
+    ...feedCommonAggregation(req),
+    { $sort: { createdAt: -1 } },
+
+    {
+      $lookup: {
+        from: "feedbookmarks",
+        let: { postId: "$_id" },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$postId", "$$postId"] },
+                  { $eq: ["$bookmarkedBy", new mongoose.Types.ObjectId(req.user?._id)] }
+                ]
+              }
+            }
+          }
+        ],
+        as: "userBookmark"
+      }
+    },
+    {
+      $lookup: {
+        from: "feedbookmarks",
+        localField: "_id",
+        foreignField: "postId",
+        as: "allBookmarks"
+      }
+    },
+    {
+      $addFields: {
+        isBookmarked: {
+          $cond: {
+            if: { $gt: [{ $size: "$userBookmark" }, 0] },
+            then: true,
+            else: false
+          }
+        },
+        bookmarkCount: { $size: "$allBookmarks" },
+        bookmarkedByUserIds: "$allBookmarks.bookmarkedBy"
+      }
+    },
+    {
+      $project: {
+        userBookmark: 0,
+        allBookmarks: 0
+      }
+    }
+  ]);
+
+  
+
+
+});
