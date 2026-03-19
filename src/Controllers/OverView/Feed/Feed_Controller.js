@@ -244,5 +244,55 @@ const feedCommonAggregation = (req) => {
     { $project: { isCloseFriendArray: 0 } },
 
 
+     // STEP 9: Muted posts
+    {
+      $lookup: {
+        from: "socialmutedposts",
+        let: { authorId: "$author" },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$userId", userId] },
+                  { $eq: ["$mutedUserId", "$$authorId"] },
+                ],
+              },
+            },
+          },
+          { $project: { _id: 1 } },
+        ],
+        as: "isMutedPostsArray",
+      },
+    },
+    { $addFields: { isPostsMuted: { $gt: [{ $size: "$isMutedPostsArray" }, 0] } } },
+    { $project: { isMutedPostsArray: 0 } },
+
+    // STEP 10: Muted stories
+    {
+      $lookup: {
+        from: "socialmutedstories",
+        let: { authorId: "$author" },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$userId", userId] },
+                  { $eq: ["$mutedUserId", "$$authorId"] },
+                ],
+              },
+            },
+          },
+          { $project: { _id: 1 } },
+        ],
+        as: "isMutedStoriesArray",
+      },
+    },
+    { $addFields: { isStoriesMuted: { $gt: [{ $size: "$isMutedStoriesArray" }, 0] } } },
+    { $project: { isMutedStoriesArray: 0 } },
+
+
+
     ];
 };
