@@ -1236,5 +1236,53 @@ const feedAggregation = (req) => {
       },
     },
 
+
+ // Remove temp field
+    { $project: { _safeOriginalPostId: 0 } },
+
+    // Safety net — standalone posts always get []
+    {
+      $addFields: {
+        originalPost: {
+          $cond: {
+            if: { $ne: ["$repostedByUserId", null] },
+            then: "$originalPost",
+            else: [],
+          },
+        },
+      },
+    },
+
+    {
+      $addFields: {
+        author: {
+          $cond: {
+            if: { $isArray: "$author" },
+            then: { $arrayElemAt: ["$author", 0] },
+            else: "$author",
+          },
+        },
+      },
+    },
+    {
+      $addFields: {
+        isExpanded: false,
+        isLocal: false,
+      },
+    },
+
+    // ✅ FIX: originalPostId is NO LONGER removed here
+    //         so post-processing loop in getAllFeed can use it
+    {
+      $project: {
+        followersEntity: 0,
+        // originalPostId: 0,  ← REMOVED - this was the root cause
+      },
+    },
+
+
+
+
+
     ];
 };
