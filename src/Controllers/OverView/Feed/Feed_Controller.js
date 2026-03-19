@@ -1478,6 +1478,93 @@ if (!isNotNullOrEmpty(fileTypes)) {
     }
 
 
+    
+    fileIdsData = processStringToArray(fileIds);
+
+
+    let position = -1;
+    if (contentType == "mixed_files") {
+      console.log("content type mixed files ");
+      console.log(req.files.files);
+      console.log("after loggging req.file");
+      files =
+        req.files.files && req.files.files?.length
+          ? req.files.files.map((file, index) => {
+            // const fileId = file.originalname;
+
+            const originalNameWithoutExt = path.parse(file.originalname).name;
+            // const fileId = fileIdsData[index] || null;
+            // console.log(`file index ${index} `);
+            // console.log(
+            //   `File type: ${fileTypesData[index].fileType} fileId: ${fileId}`
+            // );
+            position = index;
+            const fileUrl = getStaticMixedFilesFeedPath(req, file.filename);
+            console.log(`FILE URL ${fileUrl}`);
+            const fileLocalPath = getMixedFilesFeedImageLocalPath(
+              file.filename
+            );
+            return {
+              fileId: originalNameWithoutExt,
+              url: fileUrl,
+              localPath: fileLocalPath,
+            };
+          })
+          : [];
+      // console.log("content type mixed files");
+      // console.log(typeof files);
+    } else if (contentType == "image") {
+      files =
+        req.files.files && req.files.files?.length
+          ? req.files.files.map((file) => {
+            const fileUrl = getStaticFeedImagePath(req, file.filename);
+            const fileLocalPath = getFeedImageLocalPath(file.filename);
+            return { url: fileUrl, localPath: fileLocalPath };
+          })
+          : [];
+      // console.log(typeof files);
+    } else if (contentType == "audio") {
+      files =
+        req.files.files && req.files.files?.length
+          ? req.files.files.map((file) => {
+            const fileUrl = getStaticFeedAudioPath(req, file.filename);
+            const fileLocalPath = getFeedAudioLocalPath(file.filename);
+            return { url: fileUrl, localPath: fileLocalPath };
+          })
+          : [];
+    } else if (contentType == "video") {
+      files =
+        req.files.files && req.files.files?.length
+          ? req.files.files.map((file) => {
+            const fileUrl = getStaticFeedVideoPath(req, file.filename);
+            const fileLocalPath = getFeedVideoLocalPath(file.filename);
+            return { url: fileUrl, localPath: fileLocalPath };
+          })
+          : [];
+    } else if (contentType == "docs") {
+      files =
+        req.files.files && req.files.files?.length
+          ? req.files.files.map((file) => {
+            const fileUrl = getStaticFeedDocsPath(req, file.filename);
+            const fileLocalPath = getFeedDocsLocalPath(file.filename);
+            return { url: fileUrl, localPath: fileLocalPath };
+          })
+          : [];
+    }
+
+    else if (contentType == "vn") {
+      files =
+        req.files.files && req.files.files?.length
+          ? req.files.files.map((file) => {
+            const fileUrl = getStaticFeedVnPath(req, file.filename);
+            const fileLocalPath = getFeedVnLocalPath(file.filename);
+            return { url: fileUrl, localPath: fileLocalPath };
+          })
+          : [];
+    }
+
+
+
 
     }
 });
