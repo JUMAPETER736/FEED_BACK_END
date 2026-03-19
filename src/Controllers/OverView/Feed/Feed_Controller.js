@@ -1282,7 +1282,79 @@ const feedAggregation = (req) => {
 
 
 
-
-
     ];
 };
+
+
+
+const createFeed = asyncHandler(async (req, res) => {
+        console.log("creating feed");
+
+        const {
+            content,
+            tags,
+            contentType,
+            duration,
+            numberOfPages,
+            fileNames,
+            fileTypes,
+            fileSizes,
+            feedShortsBusinessId,
+            // fileIds,
+        } = req.body;
+
+    const { fileIds } = req.body;
+
+    const author = req.user._id;
+
+    if (req.files) {
+        /**
+         * @type {{ url: string; localPath: string; }[]}
+         */
+        // console.log(req.files);
+        let files = {};
+        let durationData = {};
+        let fileTypesData = {};
+        let fileNamesData = {};
+        let fileSizeData = {};
+        let numberOfPagesData = {};
+        let fileIdsData = [];
+        console.log("step 1");
+        if (!isNotNullOrEmpty(duration)) {
+        console.log("duration is null or empty");
+        } else {
+        // console.log("You can map the duration object " + duration);
+        try {
+            console.log("duration insidetry type of duration " + typeof duration);
+            if (typeof duration === "string") {
+            const jsonData = JSON.parse(duration);
+            durationData = {
+                fileId: jsonData.fileId,
+                duration: jsonData.duration,
+            };
+            } else {
+            durationData = duration.map((durationObject) => {
+                const jsonData = JSON.parse(durationObject);
+                // console.log(`durationObject ${jsonData.fileId}`);
+                return { fileId: jsonData.fileId, duration: jsonData.duration };
+            });
+            }
+
+            // durationData = processDurationData(duration);
+            // console.log(processDurationData(duration));
+        } catch (error) {
+            console.log(`errror ${error}`);
+        }
+
+        // console.log(durationData);
+        // console.log("After mapping durationData type of:" + typeof durationData);
+        }
+
+
+        
+
+
+
+
+    }
+});
