@@ -144,6 +144,58 @@ const feedCommonAggregation = (req) => {
     { $project: { postReposts: 0 } },
 
 
+    // STEP 5: Reposts on THIS post (String match - covers legacy data)
+    {
+      $lookup: {
+        from: "feedposts",
+        let: { postId: "$_id" },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$originalPostId", { $toString: "$$postId" }] },
+                  { $ne: ["$repostedByUserId", null] }
+                ]
+              }
+            }
+          }
+        ],
+        as: "postRepostsStr",
+      },
+    },
+    {
+      $addFields: {
+        repostedByUserIds: {
+          $setUnion: [
+            "$repostedByUserIds",
+            { $map: { input: "$postRepostsStr", as: "r", in: "$$r.repostedByUserId" } }
+          ]
+        },
+        repostCount: {
+          $cond: {
+            if: { $ne: ["$repostedByUserId", null] },
+            then: 0,
+            else: {
+              $add: [
+                "$repostCount",
+                { $size: "$postRepostsStr" }
+              ]
+            },
+          },
+        },
+      },
+    },
+    { $project: { postRepostsStr: 0 } },
+
+    // STEP 6: feedShortsBusinessId
+    {
+      $addFields: {
+        feedShortsBusinessId: { $ifNull: ["$feedShortsBusinessId", ""] },
+      },
+    },
+
+
 
     ];
 };
