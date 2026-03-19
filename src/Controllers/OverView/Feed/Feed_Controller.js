@@ -342,6 +342,82 @@ const feedCommonAggregation = (req) => {
     { $project: { isRestrictedArray: 0 } },
 
 
+     // STEP 13: Reposter user details
+    {
+      $lookup: {
+        from: "users",
+        localField: "repostedByUserId",
+        foreignField: "_id",
+        as: "repostedUser",
+        pipeline: [
+          {
+            $lookup: {
+              from: "socialprofiles",
+              localField: "_id",
+              foreignField: "owner",
+              as: "profile",
+            },
+          },
+          { $unwind: { path: "$profile", preserveNullAndEmptyArrays: true } },
+          {
+            $project: {
+              _id: 1,
+              avatar: 1,
+              email: 1,
+              username: 1,
+              createdAt: 1,
+              updatedAt: 1,
+              coverImage: "$profile.coverImage",
+              firstName: "$profile.firstName",
+              lastName: "$profile.lastName",
+              bio: "$profile.bio",
+              owner: "$_id",
+            },
+          },
+        ],
+      },
+    },
+    { $addFields: { repostedUser: { $arrayElemAt: ["$repostedUser", 0] } } },
+
+    // STEP 14: Post author
+    {
+      $lookup: {
+        from: "socialprofiles",
+        localField: "author",
+        foreignField: "owner",
+        as: "author",
+        pipeline: [
+          {
+            $lookup: {
+              from: "users",
+              localField: "owner",
+              foreignField: "_id",
+              as: "account",
+              pipeline: [
+                {
+                  $project: {
+                    avatar: 1,
+                    email: 1,
+                    username: 1,
+                    _id: 1,
+                    createdAt: 1,
+                    updatedAt: 1,
+                  },
+                },
+              ],
+            },
+          },
+          {
+            $addFields: {
+              account: { $ifNull: [{ $arrayElemAt: ["$account", 0] }, {}] },
+            },
+          },
+        ],
+      },
+    },
+
+
+
 
     ];
 };
