@@ -1563,6 +1563,123 @@ if (!isNotNullOrEmpty(fileTypes)) {
           : [];
     }
 
+     else if (contentType == "multiple_images") {
+      files =
+        req.files.files && req.files.files?.length
+          ? req.files.files.map((file) => {
+            const fileUrl = getStaticFeedMultipleImagePath(
+              req,
+              file.filename
+            );
+            const fileLocalPath = getFeedMultipleImageLocalPath(
+              file.filename
+            );
+            return { url: fileUrl, localPath: fileLocalPath };
+          })
+          : [];
+    }
+
+    /**
+     * @type {{ thumbnailUrl: string; thumbnailLocalPath: string; }[]}
+     */
+    // const thumbnails = req.files.feed_thumbnail || [];
+
+    // const thumbnail = thumbnails.map((image, index) => {
+    //   const fileId = fileIdsData[index] || null; // match file_id by index or use null if not available
+    //   const imageUrl = getStaticFeedThumbnailPath(req, image.filename);
+    //   const imageLocalPath = getFeedThumbnailLocalPath(image.filename);
+
+    //   console.log("thumbnail file id: " + fileId);
+    //   return {
+    //     fileId,
+    //     thumbnailUrl: imageUrl,
+    //     thumbnailLocalPath: imageLocalPath,
+    //   };
+    // });
+    const thumbnail =
+      req.files.feed_thumbnail && req.files.feed_thumbnail?.length
+        ? req.files.feed_thumbnail.map((image, index) => {
+          // const fileId = fileIdsData[index] || null;
+          const originalNameWithoutExt = path.parse(image.originalname).name;
+
+          // console.log(
+          //   `index ${index} position ${position} file ids ${fileIdsData}`
+          // );
+          // console.log("Getting some thumbnails fileId " + fileId);
+          const imageUrl = getStaticFeedThumbnailPath(req, image.filename);
+          const imageLocalPath = getFeedThumbnailLocalPath(image.filename);
+
+          // console.log("Getting some thumbnails image url " + imageUrl);
+          return {
+            fileId: originalNameWithoutExt,
+            thumbnailUrl: imageUrl,
+            thumbnailLocalPath: imageLocalPath,
+          };
+        })
+        : [];
+
+    // console.log("Ready to create feed thumbnail" + thumbnail);
+    // console.log(thumbnail);
+    console.log("feedShortsBusinessId", feedShortsBusinessId);
+
+
+    const post = await FeedPost.create({
+      content: content,
+      duration: durationData,
+      tags: tags || [],
+      author: author,
+      files: files,
+      thumbnail: thumbnail,
+      contentType: contentType,
+      numberOfPages: numberOfPagesData,
+      fileNames: fileNamesData,
+      fileTypes: fileTypesData,
+      fileIds: fileIdsData,
+      fileSizes: fileSizeData,
+      feedShortsBusinessId: feedShortsBusinessId,
+      // fileIds: fileIds,
+    });
+    if (!post) {
+      throw new ApiError(500, "Error while creating feed");
+    }
+
+    const createdPost = await FeedPost.aggregate([
+      {
+        $match: {
+          _id: post._id,
+        },
+      },
+      ...feedCommonAggregation(req),
+    ]);
+
+    console.log("Feed created");
+    return res
+      .status(201)
+      .json(new ApiResponse(201, createdPost[0], "Feed created successfully"));
+  } else {
+    const post = await FeedPost.create({
+      content: content,
+      tags: tags || [],
+      author: author,
+      contentType: contentType,
+    });
+
+    if (!post) {
+      throw new ApiError(500, "Error while creating feed");
+    }
+
+    const createdPost = await FeedPost.aggregate([
+      {
+        $match: {
+          _id: post._id,
+        },
+      },
+      ...feedCommonAggregation(req),
+    ]);
+
+    return res
+      .status(201)
+      .json(new ApiResponse(201, createdPost[0], "Feed created successfully"));
 
 
 
