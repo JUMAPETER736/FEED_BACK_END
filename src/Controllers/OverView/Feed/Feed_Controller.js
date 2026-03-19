@@ -1840,13 +1840,83 @@ const getAllFeed = asyncHandler(async (req, res) => {
           }
         }
 
+        // Fix the repostedUser if missing
+        if (!post.repostedUser && post.repostedByUserId) {
+          const repostedByUser = await User.findById(post.repostedByUserId);
 
+          if (repostedByUser) {
+            const repostedUserProfile = await SocialProfile.findOne({
+              owner: repostedByUser._id
+            });
 
+            const safeUser = {
+              _id: repostedUserProfile?._id || repostedByUser._id,
+              username: repostedByUser.username,
+              email: repostedByUser.email,
+              createdAt: repostedByUser.createdAt,
+              updatedAt: repostedByUser.updatedAt,
+            };
+
+            if (repostedByUser.avatar) {
+              safeUser.avatar = {
+                url: repostedByUser.avatar.url,
+                localPath: repostedByUser.avatar.localPath,
+                _id: repostedByUser.avatar._id,
+              };
+            }
+
+            if (repostedUserProfile) {
+              safeUser.coverImage = repostedUserProfile.coverImage;
+              safeUser.firstName = repostedUserProfile.firstName;
+              safeUser.lastName = repostedUserProfile.lastName;
+              safeUser.bio = repostedUserProfile.bio;
+              safeUser.owner = repostedByUser._id;
+            }
+
+            post.repostedUser = safeUser;
+          }
+        }
+      }
+
+      // Fix missing contentType
+      if (!post.contentType) {
+        if (post.files && post.files.length > 0) {
+          const fileTypes = post.fileTypes?.map(f => f.fileType || "").filter(Boolean) || [];
+          const hasVideo = fileTypes.some(type => type.toLowerCase().includes("video"));
+          const hasImage = fileTypes.some(type => type.toLowerCase().includes("image"));
+          const hasAudio = fileTypes.some(type => type.toLowerCase().includes("audio"));
+
+          if (hasVideo && hasImage) {
+            post.contentType = "mixed_files";
+          } else if (hasVideo) {
+            post.contentType = "video";
+          } else if (hasAudio) {
+            post.contentType = "vn";
+          } else if (hasImage) {
+            post.contentType = "mixed_files";
+          } else {
+            post.contentType = "text";
+          }
+        } else {
+          post.contentType = "text";
+        }
+      }
+
+      // ✅ Remove originalPostId from final response
+      // (it was only needed for the post-processing loop above)
+      delete post.originalPostId;
     }
-    
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, { data: posts }, "Get All Feed fetched successfully"));
+  } catch (e) {
+    console.log("Error fetching posts: ", e);
     return res
       .status(500)
       .json(new ApiResponse(500, {}, "Error fetching posts"));
   }
-
 });
+
+
+
