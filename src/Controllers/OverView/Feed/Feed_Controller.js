@@ -293,6 +293,55 @@ const feedCommonAggregation = (req) => {
     { $project: { isMutedStoriesArray: 0 } },
 
 
+    // STEP 11: Favorites
+    {
+      $lookup: {
+        from: "socialfavorites",
+        let: { authorId: "$author" },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$userId", userId] },
+                  { $eq: ["$favoriteUserId", "$$authorId"] },
+                ],
+              },
+            },
+          },
+          { $project: { _id: 1 } },
+        ],
+        as: "isFavoriteArray",
+      },
+    },
+    { $addFields: { isFavorite: { $gt: [{ $size: "$isFavoriteArray" }, 0] } } },
+    { $project: { isFavoriteArray: 0 } },
+
+    // STEP 12: Restricted
+    {
+      $lookup: {
+        from: "socialrestricteds",
+        let: { authorId: "$author" },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$userId", userId] },
+                  { $eq: ["$restrictedUserId", "$$authorId"] },
+                ],
+              },
+            },
+          },
+          { $project: { _id: 1 } },
+        ],
+        as: "isRestrictedArray",
+      },
+    },
+    { $addFields: { isRestricted: { $gt: [{ $size: "$isRestrictedArray" }, 0] } } },
+    { $project: { isRestrictedArray: 0 } },
+
+
 
     ];
 };
