@@ -600,7 +600,52 @@ const feedCommonAggregation = (req) => {
     },
 
 
-    
+     // Remove the temporary safe-id field
+    { $project: { _safeOriginalPostId: 0 } },
+
+    // Safety net — standalone posts always get []
+    {
+      $addFields: {
+        originalPost: {
+          $cond: {
+            if: { $ne: ["$repostedByUserId", null] },
+            then: "$originalPost",
+            else: [],
+          },
+        },
+      },
+    },
+
+    // STEP 16: author array → object
+    {
+      $addFields: {
+        author: {
+          $cond: {
+            if: { $isArray: "$author" },
+            then: { $arrayElemAt: ["$author", 0] },
+            else: "$author",
+          },
+        },
+      },
+    },
+
+    // STEP 17: UI helpers
+    {
+      $addFields: {
+        isExpanded: false,
+        isLocal: false,
+      },
+    },
+
+    // STEP 18: Cleanup
+    // ✅ FIX: originalPostId is NO LONGER removed here so getAllFeed
+    //         post-processing loop can use it
+    {
+      $project: {
+        followersEntity: 0,
+        // originalPostId: 0,  ← REMOVED - this was breaking getAllFeed
+      },
+    },
 
 
     ];
