@@ -723,7 +723,70 @@ const feedAggregation = (req) => {
     },
 
 
+ {
+      $addFields: {
+        isBusinessPost: {
+          $and: [
+            { $ne: ["$feedShortsBusinessId", null] },
+            { $ne: ["$feedShortsBusinessId", ""] },
+            { $gt: [{ $size: { $ifNull: ["$businessDetails", []] } }, 0] }
+          ]
+        }
+      }
+    },
 
+    {
+      $lookup: {
+        from: "businessprofiles",
+        let: {
+          ownerId: "$author",
+          isBusinessPost: "$isBusinessPost"
+        },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$$isBusinessPost", true] },
+                  { $eq: ["$owner", "$$ownerId"] }
+                ]
+              }
+            }
+          },
+          {
+            $project: {
+              businessName: 1,
+              businessType: 1,
+              businessDescription: 1,
+              backgroundPhoto: 1,
+              contact: 1
+            }
+          }
+        ],
+        as: "businessProfile"
+      }
+    },
+
+    {
+      $addFields: {
+        "businessDetails.businessProfile": {
+          $ifNull: [{ $arrayElemAt: ["$businessProfile", 0] }, null]
+        }
+      }
+    },
+
+    {
+      $unwind: {
+        path: "$businessDetails",
+        preserveNullAndEmptyArrays: true
+      }
+    },
+
+    {
+      $project: {
+        businessProfile: 0
+      }
+    },
 
 
     ];
