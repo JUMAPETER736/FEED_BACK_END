@@ -789,5 +789,199 @@ const feedAggregation = (req) => {
     },
 
 
+     {
+      $lookup: {
+        from: "feedcomments",
+        localField: "_id",
+        foreignField: "postId",
+        as: "comments",
+      },
+    },
+    {
+      $addFields: {
+        comments: { $size: "$comments" },
+      },
+    },
+    {
+      $lookup: {
+        from: "feedlikes",
+        localField: "_id",
+        foreignField: "postId",
+        as: "likes",
+      },
+    },
+    {
+      $addFields: {
+        likes: { $size: "$likes" },
+      },
+    },
+    {
+      $lookup: {
+        from: "feedlikes",
+        let: { postId: "$_id" },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$postId", "$$postId"] },
+                  { $eq: ["$likedBy", userId] },
+                ],
+              },
+            },
+          },
+          { $project: { _id: 1 } },
+        ],
+        as: "isLikedArray",
+      },
+    },
+    {
+      $addFields: {
+        isLiked: { $gt: [{ $size: "$isLikedArray" }, 0] },
+      },
+    },
+    {
+      $project: {
+        isLikedArray: 0,
+      },
+    },
+    {
+      $lookup: {
+        from: "socialfollows",
+        let: { authorId: "$author" },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$followerId", userId] },
+                  { $eq: ["$followeeId", "$$authorId"] },
+                ],
+              },
+            },
+          },
+          { $project: { _id: 1 } },
+        ],
+        as: "isFollowing",
+      },
+    },
+    {
+      $addFields: {
+        isFollowing: { $gt: [{ $size: "$isFollowing" }, 0] },
+      },
+    },
+    {
+      $lookup: {
+        from: "bookmarks",
+        let: { postId: "$_id" },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$postId", "$$postId"] },
+                  { $eq: ["$userId", userId] },
+                ],
+              },
+            },
+          },
+          { $project: { _id: 1 } },
+        ],
+        as: "isBookmarkedArray",
+      },
+    },
+    {
+      $addFields: {
+        isBookmarked: { $gt: [{ $size: "$isBookmarkedArray" }, 0] },
+      },
+    },
+    {
+      $project: {
+        isFollowingArray: 0,
+        isBookmarkedArray: 0,
+      },
+    },
+    {
+      $lookup: {
+        from: "feedbookmarks",
+        localField: "_id",
+        foreignField: "postId",
+        as: "bookmarks",
+      },
+    },
+    {
+      $addFields: {
+        bookmarkCount: { $size: "$bookmarks" },
+      },
+    },
+    {
+      $project: {
+        bookmarks: 0,
+      },
+    },
+    {
+      $lookup: {
+        from: "users",
+        localField: "repostedByUserId",
+        foreignField: "_id",
+        as: "repostedUserAccount",
+        pipeline: [
+          {
+            $project: {
+              avatar: 1,
+              email: 1,
+              username: 1,
+              _id: 1,
+              createdAt: 1,
+              updatedAt: 1,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $lookup: {
+        from: "socialprofiles",
+        localField: "repostedByUserId",
+        foreignField: "owner",
+        as: "repostedUserProfile",
+        pipeline: [
+          {
+            $project: {
+              firstName: 1,
+              lastName: 1,
+              bio: 1,
+              coverImage: 1,
+              _id: 1,
+              owner: 1,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $addFields: {
+        repostedUser: {
+          $cond: {
+            if: { $gt: [{ $size: "$repostedUserAccount" }, 0] },
+            then: {
+              $mergeObjects: [
+                { $arrayElemAt: ["$repostedUserAccount", 0] },
+                { $arrayElemAt: ["$repostedUserProfile", 0] }
+              ]
+            },
+            else: null
+          }
+        }
+      },
+    },
+     {
+      $project: {
+        repostedUserAccount: 0,
+        repostedUserProfile: 0,
+      },
+    },
+
+
     ];
 };
