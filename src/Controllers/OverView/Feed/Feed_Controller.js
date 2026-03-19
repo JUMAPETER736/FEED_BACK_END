@@ -1745,7 +1745,108 @@ const getAllFeed = asyncHandler(async (req, res) => {
     }
   ]);
 
-  
+  try {
+    const posts = await FeedPost.aggregatePaginate(
+      postAggregation,
+      getMongoosePaginationOptions({
+        page,
+        limit,
+        customLabels: {
+          totalDocs: "totalPosts",
+          docs: "posts",
+        },
+      })
+    );
 
+    // ✅ FIX: This loop now actually runs because originalPostId
+    //         is preserved in the aggregation output above
+    for (let post of posts.posts) {
+      if (post.isReposted && post.originalPostId) {
+
+        // Only fix posts where originalPost is still empty
+        // (the aggregation may have already populated it correctly)
+        if (!post.originalPost || post.originalPost.length === 0) {
+
+          const originalPost = await FeedPost.findById(post.originalPostId);
+
+          if (originalPost) {
+            // ✅ FIX: Use findOne({ owner: ... }) not findById
+            // because author field is a User ObjectId, not profile ObjectId
+            const authorProfile = await SocialProfile.findOne({
+              owner: originalPost.author
+            }).populate({
+              path: 'owner',
+              select: 'avatar username email createdAt updatedAt _id'
+            });
+
+            if (authorProfile) {
+              const builtAuthor = {
+                _id: authorProfile._id,
+                coverImage: authorProfile.coverImage,
+                firstName: authorProfile.firstName,
+                lastName: authorProfile.lastName,
+                bio: authorProfile.bio,
+                dob: authorProfile.dob,
+                location: authorProfile.location,
+                countryCode: authorProfile.countryCode,
+                phoneNumber: authorProfile.phoneNumber,
+                owner: authorProfile.owner?._id || authorProfile.owner,
+                createdAt: authorProfile.createdAt,
+                updatedAt: authorProfile.updatedAt,
+                __v: authorProfile.__v,
+              };
+
+              if (authorProfile.owner) {
+                builtAuthor.account = {
+                  _id: authorProfile.owner._id,
+                  avatar: authorProfile.owner.avatar,
+                  username: authorProfile.owner.username,
+                  email: authorProfile.owner.email,
+                  createdAt: authorProfile.owner.createdAt,
+                  updatedAt: authorProfile.owner.updatedAt
+                };
+              }
+
+              post.originalPost = [{
+                _id: originalPost._id,
+                author: builtAuthor,
+                content: originalPost.content || "",
+                contentType: originalPost.contentType || "text",
+                files: originalPost.files || [],
+                fileIds: originalPost.fileIds || [],
+                fileTypes: originalPost.fileTypes || [],
+                fileNames: originalPost.fileNames || [],
+                fileSizes: originalPost.fileSizes || [],
+                duration: originalPost.duration || [],
+                thumbnail: originalPost.thumbnail || [],
+                numberOfPages: originalPost.numberOfPages || [],
+                tags: originalPost.tags || [],
+                feedShortsBusinessId: originalPost.feedShortsBusinessId || null,
+                createdAt: originalPost.createdAt,
+                updatedAt: originalPost.updatedAt,
+                originalPostId: null,
+                isReposted: false,
+                repostedByUserId: null,
+                repostedUsers: [],
+                originalPostReposter: [],
+                bookmarks: [],
+                commentCount: 0,
+                likeCount: 0,
+                bookmarkCount: 0,
+                repostCount: 0,
+                shareCount: 0,
+              }];
+            }
+          }
+        }
+
+
+
+    }
+    
+    return res
+      .status(500)
+      .json(new ApiResponse(500, {}, "Error fetching posts"));
+  }
 
 });
