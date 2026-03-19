@@ -982,9 +982,259 @@ const feedAggregation = (req) => {
       },
     },
 
+{
+      $lookup: {
+        from: "socialprofiles",
+        localField: "author",
+        foreignField: "owner",
+        as: "author",
+        pipeline: [
+          {
+            $lookup: {
+              from: "users",
+              localField: "owner",
+              foreignField: "_id",
+              as: "account",
+              pipeline: [
+                {
+                  $project: {
+                    avatar: 1,
+                    email: 1,
+                    username: 1,
+                    _id: 1,
+                    createdAt: 1,
+                    updatedAt: 1,
+                  },
+                },
+              ],
+            },
+          },
+          {
+            $addFields: {
+              account: { $ifNull: [{ $arrayElemAt: ["$account", 0] }, {}] },
+            },
+          },
+        ],
+      },
+    },
 
-    
+    // ✅ FIX: Use _safeOriginalPostId to prevent standalone posts
+    //         from accidentally matching something via null lookup
+    {
+      $addFields: {
+        _safeOriginalPostId: {
+          $cond: {
+            if: { $ne: ["$repostedByUserId", null] },
+            then: "$originalPostId",
+            else: "$$REMOVE",
+          },
+        },
+      },
+    },
 
+    {
+      $lookup: {
+        from: "feedposts",
+        localField: "_safeOriginalPostId",
+        foreignField: "_id",
+        as: "originalPost",
+        pipeline: [
+          {
+            $lookup: {
+              from: "socialprofiles",
+              localField: "author",
+              foreignField: "owner",
+              as: "authorProfile",
+              pipeline: [
+                {
+                  $lookup: {
+                    from: "users",
+                    localField: "owner",
+                    foreignField: "_id",
+                    as: "account",
+                    pipeline: [
+                      {
+                        $project: {
+                          avatar: 1,
+                          email: 1,
+                          username: 1,
+                          _id: 1,
+                          createdAt: 1,
+                          updatedAt: 1,
+                        },
+                      },
+                    ],
+                  },
+                },
+                {
+                  $addFields: {
+                    account: { $ifNull: [{ $arrayElemAt: ["$account", 0] }, {}] },
+                  },
+                },
+                {
+                  $project: {
+                    _id: 1,
+                    firstName: 1,
+                    lastName: 1,
+                    bio: 1,
+                    coverImage: 1,
+                    dob: 1,
+                    location: 1,
+                    countryCode: 1,
+                    phoneNumber: 1,
+                    owner: 1,
+                    createdAt: 1,
+                    updatedAt: 1,
+                    account: 1,
+                  },
+                },
+              ],
+            },
+          },
+          {
+            $addFields: {
+              author: { $arrayElemAt: ["$authorProfile", 0] },
+            },
+          },
+          {
+            $project: {
+              authorProfile: 0,
+            },
+          },
+
+{
+            $lookup: {
+              from: "feedcomments",
+              localField: "_id",
+              foreignField: "postId",
+              as: "comments",
+            },
+          },
+          {
+            $lookup: {
+              from: "feedlikes",
+              localField: "_id",
+              foreignField: "postId",
+              as: "likes",
+            },
+          },
+          {
+            $lookup: {
+              from: "users",
+              localField: "repostedByUserId",
+              foreignField: "_id",
+              as: "originalPostReposterAccount",
+              pipeline: [
+                {
+                  $project: {
+                    avatar: 1,
+                    email: 1,
+                    username: 1,
+                    _id: 1,
+                    createdAt: 1,
+                    updatedAt: 1,
+                  },
+                },
+              ],
+            },
+          },
+          {
+            $lookup: {
+              from: "socialprofiles",
+              localField: "repostedByUserId",
+              foreignField: "owner",
+              as: "originalPostReposterProfile",
+              pipeline: [
+                {
+                  $project: {
+                    firstName: 1,
+                    lastName: 1,
+                    bio: 1,
+                    coverImage: 1,
+                    _id: 1,
+                    owner: 1,
+                  },
+                },
+              ],
+            },
+          },
+          {
+            $addFields: {
+              originalPostReposter: {
+                $cond: {
+                  if: { $gt: [{ $size: "$originalPostReposterAccount" }, 0] },
+                  then: [
+                    {
+                      $mergeObjects: [
+                        { $arrayElemAt: ["$originalPostReposterAccount", 0] },
+                        { $arrayElemAt: ["$originalPostReposterProfile", 0] }
+                      ]
+                    }
+                  ],
+                  else: []
+                }
+              }
+            },
+          },
+          {
+            $project: {
+              originalPostReposterAccount: 0,
+              originalPostReposterProfile: 0,
+            },
+          },
+          {
+            $lookup: {
+              from: "feedbookmarks",
+              localField: "_id",
+              foreignField: "postId",
+              as: "bookmarks",
+            },
+          },
+          {
+            $addFields: {
+              commentCount: { $size: "$comments" },
+              likeCount: { $size: "$likes" },
+              bookmarkCount: { $size: "$bookmarks" },
+            },
+          },
+          {
+            $project: {
+              comments: 0,
+              likes: 0,
+            },
+          },
+          {
+            $lookup: {
+              from: "feedposts",
+              let: { origId: "$_id" },
+              pipeline: [
+                {
+                  $match: {
+                    $expr: {
+                      $and: [
+                        { $eq: ["$originalPostId", "$$origId"] },
+                        { $ne: ["$repostedByUserId", null] }
+                      ]
+                    }
+                  }
+                }
+              ],
+              as: "reposts",
+            },
+          },
+          {
+            $addFields: {
+              repostCount: { $size: "$reposts" },
+            },
+          },
+          {
+            $project: {
+              reposts: 0,
+            },
+          },
+        ],
+      },
+    },
 
     ];
 };
