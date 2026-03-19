@@ -650,3 +650,81 @@ const feedCommonAggregation = (req) => {
 
     ];
 };
+
+
+
+const feedAggregation = (req) => {
+  const userId = new mongoose.Types.ObjectId(req.user?._id);
+
+  return [
+
+
+     {
+      $lookup: {
+        from: "businessproducts",
+        let: { businessId: "$feedShortsBusinessId" },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $eq: [{ $toString: "$_id" }, "$$businessId"]
+              }
+            }
+          },
+          {
+            $lookup: {
+              from: "socialprofiles",
+              localField: "owner",
+              foreignField: "owner",
+              as: "author",
+              pipeline: [
+                {
+                  $lookup: {
+                    from: "users",
+                    localField: "owner",
+                    foreignField: "_id",
+                    as: "account",
+                    pipeline: [
+                      {
+                        $project: {
+                          avatar: 1,
+                          username: 1,
+                          _id: 1,
+                        },
+                      },
+                    ],
+                  },
+                },
+                {
+                  $addFields: {
+                    account: { $ifNull: [{ $arrayElemAt: ["$account", 0] }, {}] },
+                  },
+                },
+                {
+                  $project: {
+                    _id: 1,
+                    firstName: 1,
+                    lastName: 1,
+                    account: 1,
+                  },
+                },
+              ],
+            },
+          },
+          {
+            $unwind: {
+              path: "$author",
+              preserveNullAndEmptyArrays: true
+            }
+          }
+        ],
+        as: "businessDetails"
+      }
+    },
+
+
+
+
+
+    ];
+};
