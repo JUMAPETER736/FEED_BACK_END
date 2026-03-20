@@ -4155,3 +4155,118 @@ const getSearchAllFeed = asyncHandler(async (req, res) => {
     );
   }
 });
+
+
+const getSearchAllFeedByUserId = asyncHandler(async (req, res) => {
+  const { username } = req.params;
+  const { page = 1, limit = 50 } = req.query;
+
+  console.log('\n\n');
+  console.log('================================================================================');
+  console.log('SEARCH REQUEST FOR USERNAME:', username);
+  console.log('Timestamp:', new Date().toISOString());
+  console.log('Page:', page, '| Limit:', limit);
+  console.log('================================================================================');
+  console.log('\n');
+
+  try {
+    // ========================================
+    // STEP 1: Find matching users by username
+    // ========================================
+    console.log('Searching for users matching "' + username + '"...');
+    console.log('--------------------------------------------------------------------------------');
+
+    const matchingUsers = await User.find({
+      username: { $regex: username, $options: "i" }
+    }).limit(20);
+
+    console.log('Found', matchingUsers.length, 'matching user(s) in User collection\n');
+
+    if (!matchingUsers || matchingUsers.length === 0) {
+      console.log('No users found matching "' + username + '"\n');
+      return res.status(404).json(
+        new ApiResponse(404, {
+          posts: [],
+          totalPosts: 0,
+          matchingUsers: [],
+          searchedUsername: username
+        }, `No users found matching '${username}'`)
+      );
+    }
+
+    // Log each found user with their ID
+    matchingUsers.forEach((user, index) => {
+      console.log('   ' + (index + 1) + '. 👤 Username:', user.username);
+      console.log('      User ID:', user._id.toString());
+      console.log('      Email:', user.email);
+      console.log('');
+    });
+
+    // ========================================
+    // STEP 2: Get User IDs
+    // ========================================
+    const userIds = matchingUsers.map(user => user._id);
+    console.log('\nExtracted', userIds.length, 'User ID(s):');
+    console.log('--------------------------------------------------------------------------------');
+    userIds.forEach((id, index) => {
+      console.log('   ' + (index + 1) + '.', id.toString());
+    });
+    console.log('');
+
+    // ========================================
+    // STEP 3: Find SocialProfiles for these users
+    // CRITICAL: Posts.author references SocialProfile._id, NOT User._id
+    // ========================================
+    console.log('\nSearching for SocialProfiles owned by these users...');
+    console.log('--------------------------------------------------------------------------------');
+
+    const socialProfiles = await SocialProfile.find({
+      owner: { $in: userIds }
+    });
+
+    const socialProfileIds = socialProfiles.map(profile => profile._id);
+
+    console.log('Found', socialProfiles.length, 'social profile(s)\n');
+
+    socialProfiles.forEach((profile, index) => {
+      console.log('   ' + (index + 1) + '. 🎭 Profile Name:', profile.firstName, profile.lastName);
+      console.log('       SocialProfile ID:', profile._id.toString());
+      console.log('       Owner (User ID):', profile.owner.toString());
+      console.log('');
+    });
+
+    if (socialProfileIds.length === 0) {
+      console.log('No social profiles found for these users\n');
+      return res.status(200).json(
+        new ApiResponse(200, {
+          posts: [],
+          totalPosts: 0,
+          matchingUsers: matchingUsers.map(u => ({
+            _id: u._id,
+            username: u.username,
+            email: u.email
+          })),
+          searchedUsername: username
+        }, `User '${username}' has no social profile`)
+      );
+    }
+
+
+
+
+
+    } catch (e) {
+    console.log('\n');
+    console.log('================================================================================');
+    console.log('ERROR IN SEARCH');
+    console.log('================================================================================');
+    console.log('Error message:', e.message);
+    console.log('Stack trace:', e.stack);
+    console.log('================================================================================');
+    console.log('\n');
+
+    return res.status(500).json(
+      new ApiResponse(500, { error: e.message }, "Error fetching posts")
+    );
+  }
+});
