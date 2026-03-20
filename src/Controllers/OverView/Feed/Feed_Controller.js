@@ -1421,6 +1421,63 @@ if (!isNotNullOrEmpty(fileTypes)) {
     }
 
 
+    if (!isNotNullOrEmpty(fileNames)) {
+      console.log("fileNames is null or empty");
+    } else {
+      console.log("You can map the fileNames object " + fileNames);
+      try {
+        // console.log(
+        //   "fileNames insidetry type of fileNames " + typeof fileNames
+        // );
+        if (typeof fileNames === "string") {
+          const jsonData = JSON.parse(fileNames);
+          fileNamesData = {
+            fileId: jsonData.fileId,
+            fileName: jsonData.fileName,
+          };
+        } else {
+          fileNamesData = fileNames.map((fileNameObject) => {
+            const jsonData = JSON.parse(fileNameObject);
+            // console.log(`durationObject ${jsonData.fileId}`);
+            return { fileId: jsonData.fileId, fileName: jsonData.fileName };
+          });
+        }
+
+        // durationData = processDurationData(duration);
+        // console.log(processDurationData(duration));
+      } catch (error) {
+        console.log(`errror ${error}`);
+      }
+
+      // console.log(durationData);
+      // console.log("After mapping durationData type of:" + typeof durationData);
+    }
+
+    if (!isNotNullOrEmpty(fileSizes)) {
+      console.log("fileSizes is null or empty");
+    } else {
+      console.log("You can map the fileSizes object " + fileSizes);
+      try {
+        if (typeof fileSizes === "string") {
+          const jsonData = JSON.parse(fileSizes);
+          fileSizeData = {
+            fileId: jsonData.fileId,
+            fileSize: jsonData.fileSize,
+          };
+        } else {
+          fileSizeData = fileTypes.map((fileSizeObject) => {
+            const jsonData = JSON.parse(fileSizeObject);
+            // console.log(`durationObject ${jsonData.fileId}`);
+            return { fileId: jsonData.fileId, fileSize: jsonData.fileSize };
+          });
+        }
+
+      } catch (error) {
+        console.log(`errror ${error}`);
+      }
+    }
+
+
 
     }
 });
