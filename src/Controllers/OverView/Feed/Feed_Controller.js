@@ -1288,20 +1288,20 @@ const feedAggregation = (req) => {
 
 
 const createFeed = asyncHandler(async (req, res) => {
-        console.log("creating feed");
+   console.log("creating feed");
 
-        const {
-            content,
-            tags,
-            contentType,
-            duration,
-            numberOfPages,
-            fileNames,
-            fileTypes,
-            fileSizes,
-            feedShortsBusinessId,
-            // fileIds,
-        } = req.body;
+    const {
+      content,
+        tags,
+        contentType,
+        duration,
+        numberOfPages,
+        fileNames,
+        fileTypes,
+        fileSizes,
+        feedShortsBusinessId,
+        // fileIds,
+   } = req.body;
 
     const { fileIds } = req.body;
 
@@ -1684,8 +1684,9 @@ if (!isNotNullOrEmpty(fileTypes)) {
 
 
     }
-});
+}
 
+);
 
 
 
@@ -1920,3 +1921,94 @@ const getAllFeed = asyncHandler(async (req, res) => {
 
 
 
+const getFeed = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10 } = req.query;
+
+  console.log("Starting getFeed for user:", req.user?._id);
+
+
+   try {
+
+
+     const userId = new mongoose.Types.ObjectId(req.user?._id);
+
+    // ── Step 1: Get ranked post IDs from Python rec service ───────
+    let recommendedIds = [];
+    let recSourceMap   = {};
+    let rankedOrder    = {};
+    let endOfFeed      = false;
+    let recItems       = [];  // declared here so it's accessible when sorting posts below
+
+    try {
+      const recResponse = await getFeedRecommendations(
+        req.user._id.toString(),
+        parseInt(limit),
+        parseInt(page)
+      );
+
+      recItems  = recResponse.items || [];
+      endOfFeed = recResponse.end_of_feed || false;
+
+      console.log("Rec system", recItems);
+
+      if (recItems.length) {
+        recommendedIds = recItems
+          .map((r) => r.post_id)
+          .filter((id) => mongoose.Types.ObjectId.isValid(id))
+          .map((id) => new mongoose.Types.ObjectId(id));
+
+        recSourceMap = Object.fromEntries(recItems.map((r) => [r.post_id, r.rec_source]));
+        rankedOrder  = Object.fromEntries(recItems.map((r) => [r.post_id, r.position]));
+      }
+    } catch (recErr) {
+      console.warn("[getFeed] Rec service unavailable, falling back to chronological:", recErr.message);
+    }
+
+    // End of feed — no more posts to show
+    if (endOfFeed) {
+      return res.status(200).json(
+        new ApiResponse(200, {
+          data: { posts: [], totalPosts: 0, page: parseInt(page), limit: parseInt(limit) },
+          endOfFeed: true,
+        }, "End of feed")
+      );
+    }
+
+    // ── Step 2: Build aggregation pipeline ────────────────────────
+    // If rec service returned IDs — filter to those posts only
+    // If rec service is down — run on all posts (chronological fallback)
+    // Build pipeline stages
+    // When rec service is active:
+    //   1. $match to filter only recommended posts
+    //   2. $addFields __recPosition using $indexOfArray so MongoDB knows the ranked order
+    //   3. $sort by __recPosition — preserves Python's order through the entire pipeline
+    // When rec service is down: sort chronologically as before
+    const matchStage = recommendedIds.length
+      ? [{ $match: { _id: { $in: recommendedIds } } }]
+      : [];
+
+    // __recPosition is added early so it survives all subsequent $lookup/$unwind stages.
+    // The actual $sort by __recPosition is placed at the very end of the pipeline
+    // (just before cleanup $project) so $unwind stages can't disrupt it.
+    const recPositionStage = recommendedIds.length
+      ? [{
+          $addFields: {
+            __recPosition: { $indexOfArray: [recommendedIds, "$_id"] },
+          },
+        }]
+      : [];
+
+
+      
+
+
+    } catch (e) {
+        console.error("Error fetching posts:", e);
+        return res
+        .status(500)
+        .json(new ApiResponse(500, {}, `Error fetching posts: ${e.message}`));
+    }
+
+}
+
+);
