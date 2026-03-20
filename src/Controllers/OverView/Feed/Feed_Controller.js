@@ -3586,7 +3586,7 @@ const getSharedPosts = asyncHandler(async (req, res) => {
         }
       },
 
-      // Apply feedCommonAggregation if available
+       // Apply feedCommonAggregation if available
       ...feedCommonAggregation(req),
 
       // ============================================
@@ -3620,6 +3620,71 @@ const getSharedPosts = asyncHandler(async (req, res) => {
           postLikes: 0
         }
       },
+
+      // ============================================
+      // BOOKMARKS AGGREGATION
+      // ============================================
+      {
+        $lookup: {
+          from: "feedbookmarks",
+          localField: "_id",
+          foreignField: "postId",
+          as: "bookmarks"
+        }
+      },
+      {
+        $addFields: {
+          bookmarkedByUserIds: "$bookmarks.bookmarkedBy",
+          bookmarkCount: { $size: "$bookmarks" },
+          isBookmarked: {
+            $in: [userId, "$bookmarks.bookmarkedBy"]
+          }
+        }
+      },
+      {
+        $project: {
+          bookmarks: 0
+        }
+      },
+
+      // ============================================
+      // REPOSTS AGGREGATION - FIXED
+      // ============================================
+      {
+        $lookup: {
+          from: "feedposts",  // ✅ FIXED: Changed from "feedretweets" to "feedposts"
+          localField: "_id",
+          foreignField: "originalPostId",
+          as: "postReposts"
+        }
+      },
+      {
+        $addFields: {
+          repostedByUserIds: {
+            $map: {
+              input: "$postReposts",
+              as: "repost",
+              in: "$$repost.repostedByUserId"
+            }
+          },
+          repostCount: { $size: "$postReposts" },
+          isRepostedByMe: {
+            $in: [userId, {
+              $map: {
+                input: "$postReposts",
+                as: "repost",
+                in: "$$repost.repostedByUserId"
+              }
+            }]
+          }
+        }
+      },
+      {
+        $project: {
+          postReposts: 0
+        }
+      },
+
 
 
 
