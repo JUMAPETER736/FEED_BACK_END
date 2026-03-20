@@ -1999,7 +1999,434 @@ const getFeed = asyncHandler(async (req, res) => {
       : [];
 
 
-      
+       const postAggregation = FeedPost.aggregate([
+      ...matchStage,
+      ...recPositionStage,
+
+      ...feedAggregation(req),
+
+      // ============================================================
+      // STEP 3: LIKES on THIS post
+      // ============================================================
+      {
+        $lookup: {
+          from: "feedlikes",
+          localField: "_id",
+          foreignField: "postId",
+          as: "postLikes",
+        },
+      },
+      {
+        $addFields: {
+          likedByUserIds: { $map: { input: "$postLikes", as: "l", in: "$$l.likedBy" } },
+          likes: { $size: "$postLikes" },
+          isLiked: { $in: [userId, "$postLikes.likedBy"] },
+        },
+      },
+      { $project: { postLikes: 0 } },
+
+      // ============================================================
+      // STEP 4: BOOKMARKS on THIS post
+      // ============================================================
+      {
+        $lookup: {
+          from: "feedbookmarks",
+          localField: "_id",
+          foreignField: "postId",
+          as: "postBookmarks",
+        },
+      },
+      {
+        $addFields: {
+          bookmarkedByUserIds: "$postBookmarks.bookmarkedBy",
+          bookmarkCount: { $size: "$postBookmarks" },
+          isBookmarked: { $in: [userId, "$postBookmarks.bookmarkedBy"] },
+        },
+      },
+      { $project: { postBookmarks: 0 } },
+
+      // ============================================================
+      // STEP 5: REPOSTS on THIS post
+      // ============================================================
+      {
+        $lookup: {
+          from: "feedposts",
+          let: { postId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$originalPostId", "$$postId"] },
+                    { $ne: ["$repostedByUserId", null] },
+                  ],
+                },
+              },
+            },
+          ],
+          as: "postReposts",
+        },
+      },
+      {
+        $addFields: {
+          repostedByUserIds: {
+            $map: { input: "$postReposts", as: "r", in: "$$r.repostedByUserId" },
+          },
+          repostCount: {
+            $cond: {
+              if: { $ne: ["$repostedByUserId", null] },
+              then: 0,
+              else: { $size: "$postReposts" },
+            },
+          },
+          isRepostedByMe: {
+            $cond: {
+              if: { $ne: ["$repostedByUserId", null] },
+              then: false,
+              else: {
+                $in: [
+                  userId,
+                  { $map: { input: "$postReposts", as: "r", in: "$$r.repostedByUserId" } },
+                ],
+              },
+            },
+          },
+          isReposted: {
+            $cond: [{ $ne: ["$repostedByUserId", null] }, true, false],
+          },
+        },
+      },
+      { $project: { postReposts: 0 } },
+
+      // ============================================================
+      // STEP 6: SHARES on THIS post
+      // ============================================================
+      {
+        $lookup: {
+          from: "feedshares",
+          localField: "_id",
+          foreignField: "postId",
+          as: "postShares",
+        },
+      },
+      {
+        $addFields: {
+          sharedByUserIds: {
+            $map: { input: "$postShares", as: "s", in: "$$s.sharedBy" },
+          },
+          shareCount: { $size: "$postShares" },
+          isShared: { $in: [userId, "$postShares.sharedBy"] },
+        },
+      },
+      { $project: { postShares: 0 } },
+
+      // ============================================================
+      // STEP 7: COMMENTS on THIS post
+      // ============================================================
+      {
+        $lookup: {
+          from: "feedcomments",
+          localField: "_id",
+          foreignField: "postId",
+          as: "postComments",
+        },
+      },
+      {
+        $addFields: {
+          comments: { $size: "$postComments" },
+        },
+      },
+      { $project: { postComments: 0 } },
+
+      // ============================================================
+      // STEP 8: LOOKUP ORIGINAL POST DATA
+      // ============================================================
+      {
+        $lookup: {
+          from: "feedposts",
+          localField: "originalPostId",
+          foreignField: "_id",
+          as: "_originalPostData",
+        },
+      },
+      {
+        $unwind: {
+          path: "$_originalPostData",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+
+      // ============================================================
+      // STEP 9: ORIGINAL POST AUTHOR
+      // ============================================================
+      {
+        $lookup: {
+          from: "socialprofiles",
+          localField: "_originalPostData.author",
+          foreignField: "owner",
+          as: "_origAuthorProfile",
+        },
+      },
+      {
+        $unwind: {
+          path: "$_origAuthorProfile",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "_origAuthorProfile.owner",
+          foreignField: "_id",
+          as: "_origAuthorAccount",
+        },
+      },
+      {
+        $unwind: {
+          path: "$_origAuthorAccount",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+
+      // ============================================================
+      // STEP 10: ORIGINAL POST LIVE STATS
+      // ============================================================
+      {
+        $lookup: {
+          from: "feedlikes",
+          localField: "_originalPostData._id",
+          foreignField: "postId",
+          as: "_origLikes",
+        },
+      },
+      {
+        $lookup: {
+          from: "feedbookmarks",
+          localField: "_originalPostData._id",
+          foreignField: "postId",
+          as: "_origBookmarks",
+        },
+      },
+      {
+        $lookup: {
+          from: "feedposts",
+          let: { origId: "$_originalPostData._id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$originalPostId", "$$origId"] },
+                    { $ne: ["$repostedByUserId", null] },
+                  ],
+                },
+              },
+            },
+          ],
+          as: "_origReposts",
+        },
+      },
+      {
+        $lookup: {
+          from: "feedshares",
+          localField: "_originalPostData._id",
+          foreignField: "postId",
+          as: "_origShares",
+        },
+      },
+      {
+        $lookup: {
+          from: "feedcomments",
+          localField: "_originalPostData._id",
+          foreignField: "postId",
+          as: "_origComments",
+        },
+      },
+
+      // ============================================================
+      // STEP 11: ORIGINAL POST REPOSTER PROFILES
+      // ============================================================
+      {
+        $lookup: {
+          from: "users",
+          let: { reposterIds: { $ifNull: ["$_origReposts.repostedByUserId", []] } },
+          pipeline: [
+            { $match: { $expr: { $in: ["$_id", "$$reposterIds"] } } },
+            {
+              $lookup: {
+                from: "socialprofiles",
+                localField: "_id",
+                foreignField: "owner",
+                as: "profile",
+              },
+            },
+            { $unwind: { path: "$profile", preserveNullAndEmptyArrays: true } },
+            {
+              $project: {
+                _id: 1,
+                avatar: 1,
+                username: 1,
+                email: 1,
+                createdAt: 1,
+                updatedAt: 1,
+                coverImage: "$profile.coverImage",
+                firstName: "$profile.firstName",
+                lastName: "$profile.lastName",
+                bio: "$profile.bio",
+                owner: "$_id",
+              },
+            },
+          ],
+          as: "_origReposters",
+        },
+      },
+
+      // ============================================================
+      // STEP 12: REPOSTER USER INFO
+      // ============================================================
+      {
+        $lookup: {
+          from: "users",
+          localField: "repostedByUserId",
+          foreignField: "_id",
+          as: "_reposterAccount",
+        },
+      },
+      { $unwind: { path: "$_reposterAccount", preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: "socialprofiles",
+          localField: "repostedByUserId",
+          foreignField: "owner",
+          as: "_reposterProfile",
+        },
+      },
+      { $unwind: { path: "$_reposterProfile", preserveNullAndEmptyArrays: true } },
+
+      // ============================================================
+      // STEP 13: BUILD FINAL COMPUTED FIELDS
+      // ============================================================
+      {
+        $addFields: {
+          repostedUser: {
+            $cond: {
+              if: { $ne: ["$repostedByUserId", null] },
+              then: {
+                _id: "$_reposterProfile._id",
+                avatar: "$_reposterAccount.avatar",
+                username: "$_reposterAccount.username",
+                email: "$_reposterAccount.email",
+                createdAt: "$_reposterAccount.createdAt",
+                updatedAt: "$_reposterAccount.updatedAt",
+                coverImage: "$_reposterProfile.coverImage",
+                firstName: "$_reposterProfile.firstName",
+                lastName: "$_reposterProfile.lastName",
+                bio: "$_reposterProfile.bio",
+                owner: "$repostedByUserId",
+              },
+              else: null,
+            },
+          },
+
+          originalPost: {
+            $cond: {
+              if: {
+                $and: [
+                  { $ne: ["$repostedByUserId", null] },
+                  { $ne: ["$_originalPostData", null] },
+                  { $ne: ["$_originalPostData._id", null] },
+                ],
+              },
+              then: [
+                {
+                  _id: "$_originalPostData._id",
+                  __v: "$_originalPostData.__v",
+                  content: "$_originalPostData.content",
+                  duration: "$_originalPostData.duration",
+                  feedShortsBusinessId: "$_originalPostData.feedShortsBusinessId",
+                  tags: "$_originalPostData.tags",
+                  contentType: "$_originalPostData.contentType",
+                  numberOfPages: "$_originalPostData.numberOfPages",
+                  fileNames: "$_originalPostData.fileNames",
+                  fileTypes: "$_originalPostData.fileTypes",
+                  fileSizes: "$_originalPostData.fileSizes",
+                  files: "$_originalPostData.files",
+                  fileIds: "$_originalPostData.fileIds",
+                  thumbnail: "$_originalPostData.thumbnail",
+                  createdAt: "$_originalPostData.createdAt",
+                  updatedAt: "$_originalPostData.updatedAt",
+                  originalPostId: null,
+                  isReposted: false,
+                  repostedByUserId: null,
+                  repostedUsers: [],
+                  author: {
+                    _id: "$_origAuthorProfile._id",
+                    coverImage: "$_origAuthorProfile.coverImage",
+                    firstName: "$_origAuthorProfile.firstName",
+                    lastName: "$_origAuthorProfile.lastName",
+                    bio: "$_origAuthorProfile.bio",
+                    dob: "$_origAuthorProfile.dob",
+                    location: "$_origAuthorProfile.location",
+                    countryCode: "$_origAuthorProfile.countryCode",
+                    phoneNumber: "$_origAuthorProfile.phoneNumber",
+                    owner: "$_origAuthorProfile.owner",
+                    createdAt: "$_origAuthorProfile.createdAt",
+                    updatedAt: "$_origAuthorProfile.updatedAt",
+                    __v: "$_origAuthorProfile.__v",
+                    account: {
+                      _id: "$_origAuthorAccount._id",
+                      avatar: "$_origAuthorAccount.avatar",
+                      username: "$_origAuthorAccount.username",
+                      email: "$_origAuthorAccount.email",
+                      createdAt: "$_origAuthorAccount.createdAt",
+                      updatedAt: "$_origAuthorAccount.updatedAt",
+                    },
+                  },
+                  originalPostReposter: { $ifNull: ["$_origReposters", []] },
+                  bookmarks: { $ifNull: ["$_origBookmarks", []] },
+                  commentCount: { $size: { $ifNull: ["$_origComments", []] } },
+                  likeCount: { $size: { $ifNull: ["$_origLikes", []] } },
+                  bookmarkCount: { $size: { $ifNull: ["$_origBookmarks", []] } },
+                  repostCount: { $size: { $ifNull: ["$_origReposts", []] } },
+                  shareCount: { $size: { $ifNull: ["$_origShares", []] } },
+                },
+              ],
+              else: [],
+            },
+          },
+        },
+      },
+
+      // ============================================================
+      // STEP 14: SORT + CLEANUP
+      // Sort happens HERE — after all $lookup/$unwind stages are done
+      // so nothing can disrupt the order afterward.
+      // ============================================================
+
+      // Rec active: sort by Python's ranked order
+      // Rec down:   sort chronologically
+      ...(recommendedIds.length
+        ? [{ $sort: { __recPosition: 1 } }]
+        : [{ $sort: { createdAt: -1 } }]
+      ),
+
+      {
+        $project: {
+          _originalPostData: 0,
+          _origAuthorProfile: 0,
+          _origAuthorAccount: 0,
+          _origLikes: 0,
+          _origBookmarks: 0,
+          _origReposts: 0,
+          _origShares: 0,
+          _origComments: 0,
+          _origReposters: 0,
+          _reposterAccount: 0,
+          _reposterProfile: 0,
+          __recPosition: 0,   // remove internal ranking field from response
+        },
+      },
+    ]);
 
 
     } catch (e) {
