@@ -3094,7 +3094,6 @@ const getBookMarkedPosts = asyncHandler(async (req, res) => {
 });
 
 
-
 const getRepostedPosts = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10 } = req.query;
 
@@ -3531,8 +3530,6 @@ const getRepostedPosts = asyncHandler(async (req, res) => {
 });
 
 
-
-
 const getSharedPosts = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10 } = req.query;
 
@@ -3882,7 +3879,6 @@ const getSharedPosts = asyncHandler(async (req, res) => {
 });
 
 
-
 const getSearchAllFeed = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, query, filter = "all" } = req.query;
 
@@ -3926,45 +3922,238 @@ const getSearchAllFeed = asyncHandler(async (req, res) => {
     };
 
 
+  const nameQuery = parseNameQuery(query);
+    console.log("Parsed name query:", nameQuery);
+
+    let socialProfileIds = [];
+    let userSearchResults = [];
+
+    if (filter === "all" || filter === "people") {
+      console.log("Searching for users...");
+
+      // Search User by username or email
+      const matchingUsers = await User.find({
+        $or: [
+          { username: { $regex: query, $options: "i" } },
+          { email: { $regex: query, $options: "i" } }
+        ]
+      }).limit(20);
+
+      console.log(`Found ${matchingUsers.length} users`);
+
+      if (matchingUsers.length > 0) {
+        const userIds = matchingUsers.map(u => u._id);
+        userSearchResults = matchingUsers.map(u => ({
+          _id: u._id,
+          username: u.username,
+          email: u.email
+        }));
+
+        const socialProfiles = await SocialProfile.find({
+          owner: { $in: userIds }
+        });
+        socialProfileIds = socialProfiles.map(p => p._id);
+      }
+
+      // Direct search in SocialProfile for names
+      const profileSearchConditions = [
+        { firstName: { $regex: query, $options: "i" } },
+        { lastName: { $regex: query, $options: "i" } }
+      ];
+
+      if (nameQuery.parts.length >= 2) {
+        const [part1, part2] = nameQuery.parts;
+        profileSearchConditions.push(
+          { $and: [{ firstName: { $regex: part1, $options: "i" } }, { lastName: { $regex: part2, $options: "i" } }] },
+          { $and: [{ lastName: { $regex: part1, $options: "i" } }, { firstName: { $regex: part2, $options: "i" } }] }
+        );
+      }
+
+      const matchingProfiles = await SocialProfile.find({
+        $or: profileSearchConditions
+      }).limit(50);
+
+      console.log(`Found ${matchingProfiles.length} social profiles by name`);
+
+      // Merge unique SocialProfile IDs
+      const newProfileIds = matchingProfiles.map(p => p._id.toString());
+      const existingIds = socialProfileIds.map(id => id.toString());
+      const allIds = [...new Set([...existingIds, ...newProfileIds])];
+      socialProfileIds = allIds.map(id => new mongoose.Types.ObjectId(id));
+    }
+
+    // Build search conditions
+    const searchConditions = [];
+
+    if (filter === "all" || filter === "posts") {
+      searchConditions.push(
+        { content: { $regex: query, $options: "i" } },
+        { tags: { $regex: query, $options: "i" } }
+      );
+    }
+
+    if (filter === "all" || filter === "people") {
+      if (socialProfileIds.length > 0) {
+        searchConditions.push({ author: { $in: socialProfileIds } });
+      }
+      // Populated fields (ensure feedAggregation includes lookups)
+      searchConditions.push(
+        { "author.account.username": { $regex: query, $options: "i" } },
+        { "author.firstName": { $regex: query, $options: "i" } },
+        { "author.lastName": { $regex: query, $options: "i" } }
+      );
+
+      if (nameQuery.parts.length >= 2) {
+        const [part1, part2] = nameQuery.parts;
+        searchConditions.push(
+          { $and: [{ "author.firstName": { $regex: part1, $options: "i" } }, { "author.lastName": { $regex: part2, $options: "i" } }] },
+          { $and: [{ "author.lastName": { $regex: part1, $options: "i" } }, { "author.firstName": { $regex: part2, $options: "i" } }] }
+        );
+      }
+    }
 
 
+    // Aggregation pipeline
+    const postAggregation = FeedPost.aggregate([
+      // Your base feed aggregation (must include author population)
+      ...feedAggregation(req),
 
+      // Search filter
+      {
+        $match: {
+          $or: searchConditions
+        }
+      },
 
+      // Add concatenated name fields for scoring
+      {
+        $addFields: {
+          fullNameForward: {
+            $toLower: {
+              $concat: [
+                { $ifNull: ["$author.firstName", ""] },
+                { $ifNull: ["$author.lastName", ""] }
+              ]
+            }
+          },
+          fullNameReverse: {
+            $toLower: {
+              $concat: [
+                { $ifNull: ["$author.lastName", ""] },
+                { $ifNull: ["$author.firstName", ""] }
+              ]
+            }
+          },
+          fullNameWithSpace: {
+            $toLower: {
+              $concat: [
+                { $ifNull: ["$author.firstName", ""] },
+                " ",
+                { $ifNull: ["$author.lastName", ""] }
+              ]
+            }
+          },
+          fullNameReverseWithSpace: {
+            $toLower: {
+              $concat: [
+                { $ifNull: ["$author.lastName", ""] },
+                " ",
+                { $ifNull: ["$author.firstName", ""] }
+              ]
+            }
+          }
+        }
+      },
 
+      // Relevance scoring
+      {
+        $addFields: {
+          relevanceScore: {
+            $sum: [
+              // Exact username match
+              {
+                $cond: [
+                  { $eq: [{ $toLower: { $ifNull: ["$author.account.username", ""] } }, query.toLowerCase()] },
+                  100, 0
+                ]
+              },
+              // Exact concatenated name matches
+              { $cond: [{ $eq: ["$fullNameForward", nameQuery.original] }, 95, 0] },
+              { $cond: [{ $eq: ["$fullNameReverse", nameQuery.original] }, 95, 0] },
+              { $cond: [{ $eq: ["$fullNameWithSpace", nameQuery.original] }, 95, 0] },
+              { $cond: [{ $eq: ["$fullNameReverseWithSpace", nameQuery.original] }, 95, 0] },
+              // Partial concatenated
+              { $cond: [{ $regexMatch: { input: "$fullNameForward", regex: nameQuery.original, options: "i" } }, 85, 0] },
+              { $cond: [{ $regexMatch: { input: "$fullNameReverse", regex: nameQuery.original, options: "i" } }, 85, 0] },
+              // Username starts with
+              { $cond: [{ $regexMatch: { input: { $ifNull: ["$author.account.username", ""] }, regex: `^${query}`, options: "i" } }, 80, 0] },
+              // First/Last name
+              { $cond: [{ $regexMatch: { input: { $ifNull: ["$author.firstName", ""] }, regex: nameQuery.parts[0] || query, options: "i" } }, 70, 0] },
+              { $cond: [{ $regexMatch: { input: { $ifNull: ["$author.lastName", ""] }, regex: nameQuery.parts[1] || query, options: "i" } }, 70, 0] },
+              // Username contains
+              { $cond: [{ $regexMatch: { input: { $ifNull: ["$author.account.username", ""] }, regex: query, options: "i" } }, 40, 0] },
+              // Content contains
+              { $cond: [{ $regexMatch: { input: { $ifNull: ["$content", ""] }, regex: query, options: "i" } }, 30, 0] },
+              // Tag exact
+              { $cond: [{ $in: [query.toLowerCase(), { $map: { input: { $ifNull: ["$tags", []] }, as: "tag", in: { $toLower: "$$tag" } } }] }, 50, 0] }
+            ]
+          }
+        }
+      },
 
+      // Clean up temp fields
+      {
+        $project: {
+          fullNameForward: 0,
+          fullNameReverse: 0,
+          fullNameWithSpace: 0,
+          fullNameReverseWithSpace: 0
+        }
+      },
 
+      // Sort
+      { $sort: { relevanceScore: -1, createdAt: -1 } }
+    ]);
 
+    console.log("Executing search query...");
 
+    // Paginate
+    const posts = await FeedPost.aggregatePaginate(
+      postAggregation,
+      getMongoosePaginationOptions({
+        page,
+        limit,
+        customLabels: { totalDocs: "totalPosts", docs: "posts" }
+      })
+    );
 
+    console.log(`Found ${posts.posts.length} posts (${posts.totalPosts} total)`);
 
+    // Process posts
+    for (let post of posts.posts) {
+      await processPost(post);
+    }
 
+    const responseData = {
+      data: posts,
+      searchQuery: query,
+      filter: filter,
+      matchingUsers: userSearchResults,
+      totalResults: posts.totalPosts
+    };
 
+    console.log("=== SEARCH COMPLETE ===\n");
 
+    return res.status(200).json(
+      new ApiResponse(200, responseData, `Found ${posts.totalPosts} results for "${query}"`)
+    );
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-      } catch (e) {
+  } catch (e) {
     console.error("Search error:", e.message, e.stack);
     return res.status(500).json(
       new ApiResponse(500, { error: e.message }, "Error searching feed")
     );
   }
 });
+
+
