@@ -2428,16 +2428,69 @@ const getFeed = asyncHandler(async (req, res) => {
       },
     ]);
 
-    
 
 
-    } catch (e) {
-        console.error("Error fetching posts:", e);
-        return res
-        .status(500)
-        .json(new ApiResponse(500, {}, `Error fetching posts: ${e.message}`));
+
+// ── Step 3: Execute + paginate ───────────────────────────────
+    let data;
+
+    if (recommendedIds.length) {
+      // Rec service is active — Python already paginated (page + limit)
+      // so we fetch exactly those posts without aggregatePaginate slicing again.
+      // Pipeline already sorted by __recPosition, but we JS-sort as a safety net.
+      const posts = await postAggregation;
+
+      // Ordered array of string IDs from Python — used as the source of truth for order
+      const postIdOrder = recItems.map((r) => r.post_id);
+
+      // JS sort as safety net in case any pipeline stage disrupted the order
+      posts.sort((a, b) => {
+        const posA = postIdOrder.indexOf(a._id.toString());
+        const posB = postIdOrder.indexOf(b._id.toString());
+        return posA - posB;
+      });
+
+      // Attach rec_source and position to each post
+      const rankedPosts = posts.map((post) => ({
+        ...post,
+        rec_source: recSourceMap[post._id.toString()] || "unknown",
+        position:   rankedOrder[post._id.toString()]  ?? 0,
+      }));
+
+      // Match the same response shape as aggregatePaginate
+      data = {
+        posts:      rankedPosts,
+        totalPosts: rankedPosts.length,
+        page:       parseInt(page),
+        limit:      parseInt(limit),
+        hasMore:    rankedPosts.length === parseInt(limit),
+      };
+
+    } else {
+      // Rec service is down — fall back to normal aggregatePaginate
+      data = await FeedPost.aggregatePaginate(
+        postAggregation,
+        getMongoosePaginationOptions({
+          page: parseInt(page),
+          limit: parseInt(limit),
+          customLabels: {
+            totalDocs: "totalPosts",
+            docs: "posts",
+          },
+        })
+      );
     }
 
-}
+    console.log("Feed posts fetched successfully:", data.totalPosts);
 
-);
+    return res
+      .status(200)
+      .json(new ApiResponse(200, { data }, "Get All Feed Posts Successfully"));
+
+  } catch (e) {
+    console.error("Error fetching posts:", e);
+    return res
+      .status(500)
+      .json(new ApiResponse(500, {}, `Error fetching posts: ${e.message}`));
+  }
+});
