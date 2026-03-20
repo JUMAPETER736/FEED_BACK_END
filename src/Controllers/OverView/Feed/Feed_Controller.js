@@ -4252,6 +4252,86 @@ const getSearchAllFeedByUserId = asyncHandler(async (req, res) => {
     }
 
 
+    // ========================================
+    // STEP 4: Count posts using SocialProfile IDs
+    // ========================================
+    console.log('\nCounting posts where author is in SocialProfile IDs...');
+    console.log('--------------------------------------------------------------------------------');
+    console.log('');
+
+    // CRITICAL FIX: Search by SocialProfile IDs, not User IDs
+    const totalPostCount = await FeedPost.countDocuments({
+      author: { $in: socialProfileIds }
+    });
+
+    console.log('');
+    console.log('================================================================================');
+    console.log('TOTAL POSTS COUNT:', totalPostCount);
+    console.log('================================================================================');
+    console.log('Posts found with author in SocialProfile IDs:', totalPostCount);
+    console.log('================================================================================');
+    console.log('');
+
+    // ========================================
+    // STEP 5: Sample posts to verify author IDs
+    // ========================================
+    console.log('\nSampling first 5 posts to verify author IDs...');
+    console.log('--------------------------------------------------------------------------------');
+    console.log('');
+
+    const samplePosts = await FeedPost.find({
+      author: { $in: socialProfileIds }
+    }).limit(5).select('_id author createdAt content');
+
+    if (samplePosts.length > 0) {
+      samplePosts.forEach((post, index) => {
+        console.log('   ' + (index + 1) + '. Post ID:', post._id.toString());
+        console.log('      Author ID:', post.author.toString());
+        console.log('      Created:', post.createdAt);
+        console.log('      Content Preview:', post.content?.substring(0, 50) || '(no content)', '...');
+
+        // Check if this author ID is in our socialProfileIds
+        const isSocialProfileId = socialProfileIds.some(id => id.toString() === post.author.toString());
+
+        if (isSocialProfileId) {
+          console.log('      ✓ Author is a SocialProfile ID - MATCH FOUND');
+        } else {
+          console.log('      ✗ WARNING: Author ID doesn\'t match searched SocialProfile IDs!');
+        }
+        console.log('');
+      });
+    } else {
+      console.log('   No sample posts found');
+      console.log('');
+    }
+
+    if (totalPostCount === 0) {
+      console.log('User "' + username + '" found but has NO posts\n');
+      return res.status(200).json(
+        new ApiResponse(200, {
+          posts: [],
+          totalPosts: 0,
+          limit: parseInt(limit),
+          page: parseInt(page),
+          totalPages: 0,
+          hasNextPage: false,
+          hasPrevPage: false,
+          matchingUsers: matchingUsers.map(u => ({
+            _id: u._id,
+            username: u.username,
+            email: u.email
+          })),
+          searchedUsername: username,
+          debug: {
+            userIds: userIds.map(id => id.toString()),
+            socialProfileIds: socialProfileIds.map(id => id.toString()),
+            totalPostCount
+          }
+        }, `User '${username}' found but has no posts`)
+      );
+    }
+
+    
 
 
 
