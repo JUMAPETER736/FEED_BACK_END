@@ -4637,3 +4637,69 @@ const getMyFeed = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, posts, "My feed fetched successfully"));
 });
+
+
+const deleteFeedPost = asyncHandler(async (req, res) => {
+  const { postId } = req.params;
+
+  console.log("delete feed");
+  try {
+    const post = await FeedPost.findOneAndDelete({
+      _id: postId,
+      author: req.user._id,
+    });
+
+    if (!post) {
+      return res.status(400).json(new ApiError(400, {}, "Feed Post Not Found"));
+    }
+
+    const feedFav = await FeedBookmark.deleteOne({
+      postId: postId,
+    });
+
+    if (feedFav) {
+      console.log(`delete successful `);
+    } else {
+      console.log(`delete not successful`);
+    }
+    // const postImages = [...(post.files || [])];
+    // const feedThumbnail = [...(post.thumbnail || [])];
+
+    console.log("still continuing delete process");
+
+    try {
+      const postImages = post.files || [];
+      const feedThumbnail = post.thumbnail || [];
+
+      // postImages.map((feed) => {
+      //   // remove images associated with the post that is being deleted
+      //   removeLocalFile(feed.localPath);
+      // });
+
+      // feedThumbnail.map((thumbnail) => {
+      //   removeLocalFile(thumbnail.imageLocalPath);
+      // });
+
+      postImages.forEach((feed) => {
+        // remove images associated with the post that is being deleted
+        removeLocalFile(feed.localPath);
+      });
+
+      // // Check if feedThumbnail exists and is an array before iterating
+      if (Array.isArray(feedThumbnail)) {
+        feedThumbnail.forEach((thumbnail) => {
+          removeLocalFile(thumbnail.thumbnailLocalPath);
+        });
+      }
+    } catch (e) {
+      console.log("error deleting files" + e.message);
+    }
+
+    console.log("Delete successful for post ID:", postId);
+    return res
+      .status(200)
+      .json(new ApiResponse(200, {}, "Feed Post deleted successfully"));
+  } catch (e) {
+    console.log("error " + e.message);
+  }
+});
