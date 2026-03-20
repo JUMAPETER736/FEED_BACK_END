@@ -3880,3 +3880,91 @@ const getSharedPosts = asyncHandler(async (req, res) => {
       .json(new ApiResponse(500, {}, `Error: ${error.message}`));
   }
 });
+
+
+
+const getSearchAllFeed = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10, query, filter = "all" } = req.query;
+
+  console.log("\n=== GENERAL SEARCH ===");
+  console.log("Query:", query);
+  console.log("Filter:", filter);
+
+  if (!query || query.trim() === "") {
+    return res.status(400).json(
+      new ApiResponse(400, {}, "Search query is required")
+    );
+  }
+
+  try {
+    // Helper: Improved name query parser
+    const parseNameQuery = (q) => {
+      const trimmed = q.trim();
+      const lowerQuery = trimmed.toLowerCase();
+
+      const results = {
+        original: lowerQuery,
+        hasSpace: trimmed.includes(' '),
+        parts: []
+      };
+
+      if (results.hasSpace) {
+        results.parts = trimmed.split(/\s+/).filter(p => p.length > 0);
+      } else {
+        // Better camelCase detection and split
+        const camelSplit = trimmed.replace(/([a-z])([A-Z])/g, '$1 $2').split(/\s+/);
+        if (camelSplit.length > 1) {
+          results.parts = camelSplit;
+        } else if (trimmed.length >= 4) {
+          const mid = Math.floor(trimmed.length / 2);
+          results.parts = [trimmed.slice(0, mid), trimmed.slice(mid)];
+        }
+      }
+
+      results.parts = results.parts.map(p => p.toLowerCase());
+      return results;
+    };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      } catch (e) {
+    console.error("Search error:", e.message, e.stack);
+    return res.status(500).json(
+      new ApiResponse(500, { error: e.message }, "Error searching feed")
+    );
+  }
+});
