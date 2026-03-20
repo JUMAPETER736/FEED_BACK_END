@@ -4522,3 +4522,64 @@ const getSearchAllFeedByUserId = asyncHandler(async (req, res) => {
 });
 
 
+const getFeedPostsByUsername = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10 } = req.query;
+  const { username } = req.params;
+
+  console.log("username");
+  const user = await User.findOne({
+    username: username.toLowerCase(),
+  });
+
+  if (!user) {
+    throw new ApiError(
+      404,
+      "User with username '" + username + "' does not exist"
+    );
+  }
+
+  const userId = user._id;
+
+  const postAggregation = FeedPost.aggregate([
+    {
+      $match: {
+        author: new mongoose.Types.ObjectId(userId),
+      },
+    },
+    {
+      $sort: { createdAt: -1 }, // Sort by createdAt in descending order
+    },
+    ...feedCommonAggregation(req),
+  ]);
+
+  const posts = await FeedPost.aggregatePaginate(
+    postAggregation,
+    getMongoosePaginationOptions({
+      page,
+      limit,
+      customLabels: {
+        totalDocs: "totalPosts",
+        docs: "posts",
+      },
+    })
+  );
+
+  console.log(`inside getAllPosts 2`);
+  const ownerIDs = [];
+
+  posts.posts.forEach((post) => {
+    const accountId = post.author ? post.author.account._id : null;
+    // post.id
+    ownerIDs.push(accountId);
+  });
+  let isFollowing = false;
+
+  
+
+
+   return res
+    .status(200)
+    .json(
+      new ApiResponse(200, responseData, "User's feed fetched successfully")
+    );
+});
