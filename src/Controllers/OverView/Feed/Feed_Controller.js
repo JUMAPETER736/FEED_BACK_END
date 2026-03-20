@@ -3095,3 +3095,107 @@ const getBookMarkedPosts = asyncHandler(async (req, res) => {
 
 
 
+const getRepostedPosts = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10 } = req.query;
+
+  console.log("Starting getRepostedPosts for user:", req.user?._id);
+
+  try {
+    const userId = new mongoose.Types.ObjectId(req.user?._id);
+
+    const postAggregation = FeedPost.aggregate([
+
+      // STEP 1: Only repost wrappers created by this user
+      {
+        $match: {
+          repostedByUserId: userId,
+          originalPostId: { $exists: true, $ne: null },
+        },
+      },
+
+      // STEP 2: Newest repost first
+      { $sort: { createdAt: -1 } },
+
+      // STEP 3: REPOST WRAPPER'S OWN STATS
+      {
+        $lookup: {
+          from: "feedlikes",
+          localField: "_id",
+          foreignField: "postId",
+          as: "repostLikes",
+        },
+      },
+      {
+        $lookup: {
+          from: "feedbookmarks",
+          localField: "_id",
+          foreignField: "postId",
+          as: "repostBookmarks",
+        },
+      },
+      {
+        $lookup: {
+          from: "feedposts",
+          let: { wrapperId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$originalPostId", "$$wrapperId"] },
+                    { $ne: ["$repostedByUserId", null] }
+                  ]
+                }
+              }
+            }
+          ],
+          as: "repostReposts",
+        },
+      },
+      {
+        $lookup: {
+          from: "feedshares",
+          localField: "_id",
+          foreignField: "postId",
+          as: "repostShares",
+        },
+      },
+      {
+        $lookup: {
+          from: "feedcomments",
+          localField: "_id",
+          foreignField: "postId",
+          as: "repostComments",
+        },
+      },
+
+      
+
+
+   ]);
+
+     const posts = await FeedPost.aggregatePaginate(
+      postAggregation,
+      getMongoosePaginationOptions({
+        page: parseInt(page),
+        limit: parseInt(limit),
+        customLabels: {
+          totalDocs: "totalRepostedPosts",
+          docs: "repostedPosts",
+        },
+      })
+    );
+
+    console.log("All Reposted Posts fetched successfully:", posts.totalRepostedPosts);
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, posts, "All Reposted Posts fetched successfully"));
+
+  } catch (error) {
+    console.error("Error fetching reposted posts:", error);
+    return res
+      .status(500)
+      .json(new ApiResponse(500, {}, `Error: ${error.message}`));
+  }
+});
