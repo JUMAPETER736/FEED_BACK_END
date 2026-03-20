@@ -2506,7 +2506,7 @@ const getLikedPosts = asyncHandler(async (req, res) => {
 
 
 
-       // ✅ Start from FeedPost, NOT FeedLike
+       // Start from FeedPost, NOT FeedLike
     const postAggregation = FeedPost.aggregate([
       // First, lookup likes to filter only posts liked by current user
       {
@@ -2619,8 +2619,161 @@ const getLikedPosts = asyncHandler(async (req, res) => {
     console.log("Executing aggregation with pagination");
 
 
+      // ✅ IMPORTANT: Use FeedPost.aggregatePaginate, NOT FeedLike
+    const posts = await FeedPost.aggregatePaginate(
+      postAggregation,
+      getMongoosePaginationOptions({
+        page: parseInt(page),
+        limit: parseInt(limit),
+        customLabels: {
+          totalDocs: "totalLikedPosts",
+          docs: "likedPosts",
+        },
+      })
+    );
 
-     } catch (error) {
+    // Post-processing for reposted posts (same as getAllFeed)
+    for (let post of posts.likedPosts) {
+      if (post.isReposted && post.originalPostId) {
+        const originalPost = await FeedPost.findById(post.originalPostId);
+
+        if (originalPost) {
+          const author = await SocialProfile.findById(originalPost.author)
+            .populate('owner');
+
+          if (author) {
+            post.author = {
+              _id: author._id,
+              coverImage: author.coverImage,
+              firstName: author.firstName,
+              lastName: author.lastName,
+              bio: author.bio,
+              dob: author.dob,
+              location: author.location,
+              countryCode: author.countryCode,
+              phoneNumber: author.phoneNumber,
+              owner: author.owner,
+              createdAt: author.createdAt,
+              updatedAt: author.updatedAt,
+              __v: author.__v,
+            };
+
+            if (author.owner) {
+              post.author.account = {
+                _id: author.owner._id,
+                avatar: author.owner.avatar,
+                username: author.owner.username,
+                email: author.owner.email,
+                createdAt: author.owner.createdAt,
+                updatedAt: author.owner.updatedAt
+              };
+            }
+
+            post.content = originalPost.content || post.content;
+            post.tags = originalPost.tags || post.tags;
+            post.fileIds = originalPost.fileIds || post.fileIds;
+            post.files = originalPost.files || post.files;
+            post.contentType = originalPost.contentType || post.contentType;
+
+            if (!post.contentType) {
+              post.contentType = "text";
+            }
+
+            if (!post.originalPost) {
+              post.originalPost = [];
+            }
+
+            if (post.originalPost.length === 0) {
+              post.originalPost.push({
+                _id: originalPost._id,
+                author: post.author,
+                content: originalPost.content,
+                contentType: originalPost.contentType,
+                files: originalPost.files,
+                fileIds: originalPost.fileIds,
+                tags: originalPost.tags,
+                createdAt: originalPost.createdAt,
+              });
+            }
+
+            post.comments = originalPost.comments || post.comments;
+            post.likes = originalPost.likes || post.likes;
+            post.reposts = originalPost.reposts || post.reposts;
+            post.repostedUsersCount = originalPost.repostedUsersCount || post.repostedUsersCount;
+          }
+
+          if (post.repostedByUserId) {
+            const repostedByUser = await User.findById(post.repostedByUserId);
+
+            if (repostedByUser) {
+              const repostedUserProfile = await SocialProfile.findOne({
+                owner: repostedByUser._id
+              });
+
+              const safeUser = {
+                _id: repostedUserProfile?._id || repostedByUser._id,
+                username: repostedByUser.username,
+                email: repostedByUser.email,
+                createdAt: repostedByUser.createdAt,
+                updatedAt: repostedByUser.updatedAt,
+              };
+
+              if (repostedByUser.avatar) {
+                safeUser.avatar = {
+                  url: repostedByUser.avatar.url,
+                  localPath: repostedByUser.avatar.localPath,
+                  _id: repostedByUser.avatar._id,
+                };
+              }
+
+              if (repostedUserProfile) {
+                safeUser.coverImage = repostedUserProfile.coverImage;
+                safeUser.firstName = repostedUserProfile.firstName;
+                safeUser.lastName = repostedUserProfile.lastName;
+                safeUser.bio = repostedUserProfile.bio;
+                safeUser.owner = repostedByUser._id;
+              }
+
+              post.repostedUser = safeUser;
+            }
+          }
+        }
+      }
+
+      // Set contentType if not set
+      if (!post.contentType) {
+        if (post.files && post.files.length > 0) {
+          const fileTypes = post.files.map(f => f.fileType || "").filter(Boolean);
+          const hasVideo = fileTypes.some(type => type.toLowerCase().includes("video"));
+          const hasImage = fileTypes.some(type => type.toLowerCase().includes("image"));
+          const hasAudio = fileTypes.some(type => type.toLowerCase().includes("audio"));
+
+          if (hasVideo && hasImage) {
+            post.contentType = "mixed_files";
+          } else if (hasVideo) {
+            post.contentType = "videos";
+          } else if (hasAudio) {
+            post.contentType = "vn";
+          } else if (hasImage) {
+            post.contentType = "mixed_files";
+          } else {
+            post.contentType = "text";
+          }
+        } else {
+          post.contentType = "text";
+        }
+      }
+    }
+
+    console.log("All Liked Posts fetched successfully:", posts.totalLikedPosts);
+
+    // Return posts directly (matching getFeed pattern)
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(200, posts, "All Liked Posts fetched successfully")
+      );
+  } catch (error) {
     console.error("Error fetching liked posts:", error);
     return res
       .status(500)
