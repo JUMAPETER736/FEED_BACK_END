@@ -4606,4 +4606,34 @@ const getFeedPostsByUsername = asyncHandler(async (req, res) => {
 });
 
 
+const getMyFeed = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 20 } = req.query;
 
+  const postAggregation = FeedPost.aggregate([
+    {
+      $match: {
+        author: new mongoose.Types.ObjectId(req.user?._id),
+      },
+    },
+    {
+      $sort: { createdAt: -1 }, // Sort by createdAt in descending order
+    },
+    ...feedCommonAggregation(req),
+  ]);
+
+  const posts = await FeedPost.aggregatePaginate(
+    postAggregation,
+    getMongoosePaginationOptions({
+      page,
+      limit,
+      customLabels: {
+        totalDocs: "totalPosts",
+        docs: "posts",
+      },
+    })
+  );
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, posts, "My feed fetched successfully"));
+});
