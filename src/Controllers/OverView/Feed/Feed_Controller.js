@@ -3529,3 +3529,115 @@ const getRepostedPosts = asyncHandler(async (req, res) => {
       .json(new ApiResponse(500, {}, `Error: ${error.message}`));
   }
 });
+
+
+
+
+const getSharedPosts = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10 } = req.query;
+
+  console.log("Starting getSharedPosts for user:", req.user?._id);
+
+  try {
+    const userId = new mongoose.Types.ObjectId(req.user?._id);
+
+    // Start aggregation from FeedShare
+    const postAggregation = FeedShare.aggregate([
+      // Match only shares by current user
+      {
+        $match: {
+          sharedBy: userId,
+        },
+      },
+      // Sort by when they shared (most recent first)
+      {
+        $sort: { createdAt: -1 },
+      },
+      // Lookup the post
+      {
+        $lookup: {
+          from: "feedposts",
+          localField: "postId",
+          foreignField: "_id",
+          as: "post",
+        },
+      },
+      // Unwind the post
+      {
+        $unwind: {
+          path: "$post",
+          preserveNullAndEmptyArrays: false,
+        },
+      },
+      // Store share metadata before replacing root
+      {
+        $addFields: {
+          "post.shareId": "$_id",
+          "post.sharedBy": "$sharedBy",
+          "post.sharedAt": "$createdAt",
+          "post.shareMethod": "$shareMethod",
+          "post.shareNote": "$shareNote"
+        }
+      },
+      // Replace root with post
+      {
+        $replaceRoot: {
+          newRoot: "$post"
+        }
+      },
+
+      // Apply feedCommonAggregation if available
+      ...feedCommonAggregation(req),
+
+      // ============================================
+      // LIKES AGGREGATION
+      // ============================================
+      {
+        $lookup: {
+          from: "feedlikes",
+          localField: "_id",
+          foreignField: "postId",
+          as: "postLikes"
+        }
+      },
+      {
+        $addFields: {
+          likedByUserIds: {
+            $map: {
+              input: "$postLikes",
+              as: "like",
+              in: "$$like.likedBy"
+            }
+          },
+          likes: { $size: "$postLikes" },
+          isLiked: {
+            $in: [userId, "$postLikes.likedBy"]
+          }
+        }
+      },
+      {
+        $project: {
+          postLikes: 0
+        }
+      },
+
+
+
+
+     ]);
+     
+     
+    console.log("All Shared Posts fetched successfully:", posts.totalSharedPosts);
+
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(200, posts, "All Shared Posts fetched successfully")
+      );
+  } catch (error) {
+    console.error("Error fetching shared posts:", error);
+    return res
+      .status(500)
+      .json(new ApiResponse(500, {}, `Error: ${error.message}`));
+  }
+});
