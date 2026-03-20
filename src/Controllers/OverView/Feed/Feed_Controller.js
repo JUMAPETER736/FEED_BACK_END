@@ -2494,3 +2494,136 @@ const getFeed = asyncHandler(async (req, res) => {
       .json(new ApiResponse(500, {}, `Error fetching posts: ${e.message}`));
   }
 });
+
+
+const getLikedPosts = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10 } = req.query;
+
+  console.log("Starting getLikedPosts for user:", req.user?._id);
+
+  try {
+    const userId = new mongoose.Types.ObjectId(req.user?._id);
+
+
+
+       // ✅ Start from FeedPost, NOT FeedLike
+    const postAggregation = FeedPost.aggregate([
+      // First, lookup likes to filter only posts liked by current user
+      {
+        $lookup: {
+          from: "feedlikes",
+          let: { postId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$postId", "$$postId"] },
+                    { $eq: ["$likedBy", userId] }
+                  ]
+                }
+              }
+            }
+          ],
+          as: "userLike"
+        }
+      },
+
+      // ✅ Filter to only include posts that the user has liked
+      {
+        $match: {
+          userLike: { $ne: [] }
+        }
+      },
+
+      // ✅ Add like metadata
+      {
+        $addFields: {
+          likeId: { $arrayElemAt: ["$userLike._id", 0] },
+          likedAt: { $arrayElemAt: ["$userLike.createdAt", 0] }
+        }
+      },
+
+      // ✅ Sort by when they liked it (most recent first)
+      {
+        $sort: { likedAt: -1 }
+      },
+
+      // ✅ Remove the temporary userLike array
+      {
+        $project: {
+          userLike: 0
+        }
+      },
+
+      // Apply feedCommonAggregation (it expects post at root level)
+      ...feedCommonAggregation(req),
+
+      // ============================================
+      // LIKES AGGREGATION - SEPARATE FOR EACH POST
+      // ============================================
+      {
+        $lookup: {
+          from: "feedlikes",
+          localField: "_id",  // ← Match exact post ID (wrapper or original)
+          foreignField: "postId",
+          as: "postLikes"
+        }
+      },
+      {
+        $addFields: {
+          likedByUserIds: {
+            $map: {
+              input: "$postLikes",
+              as: "like",
+              in: "$$like.likedBy"
+            }
+          },
+          likes: { $size: "$postLikes" },
+          isLiked: true // Always true since we're fetching liked posts
+        }
+      },
+      {
+        $project: {
+          postLikes: 0
+        }
+      },
+
+      // ============================================
+      // BOOKMARKS AGGREGATION - SEPARATE FOR EACH POST
+      // ============================================
+      {
+        $lookup: {
+          from: "feedbookmarks",
+          localField: "_id",  // ← Match exact post ID (wrapper or original)
+          foreignField: "postId",
+          as: "bookmarks"
+        }
+      },
+      {
+        $addFields: {
+          bookmarkedByUserIds: "$bookmarks.bookmarkedBy",
+          bookmarkCount: { $size: "$bookmarks" },
+          isBookmarked: {
+            $in: [userId, "$bookmarks.bookmarkedBy"]
+          }
+        }
+      },
+      {
+        $project: {
+          bookmarks: 0
+        }
+      }
+    ]);
+
+    console.log("Executing aggregation with pagination");
+
+
+
+     } catch (error) {
+    console.error("Error fetching liked posts:", error);
+    return res
+      .status(500)
+      .json(new ApiResponse(500, {}, `Error: ${error.message}`));
+  }
+});
