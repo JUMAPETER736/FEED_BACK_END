@@ -4574,12 +4574,36 @@ const getFeedPostsByUsername = asyncHandler(async (req, res) => {
   });
   let isFollowing = false;
 
-  
+ try {
+    await Promise.all(
+      ownerIDs.map(async (followersId) => {
+        const followInstance = await SocialFollow.findOne({
+          followerId: req.user?._id,
+          followeeId: followersId,
+        });
 
+        isFollowing = followInstance ? true : false;
 
-   return res
+        const newFollowList = { followersId, isFollowing };
+        followList.push(newFollowList);
+
+        // console.log(`FollowersId: ${followersId}, isFollowing: ${isFollowing}`);
+      })
+    );
+  } catch (error) {
+    console.error("Error in Promise.all:", error);
+  }
+
+  const responseData = {
+    posts,
+    followList,
+  };
+  return res
     .status(200)
     .json(
       new ApiResponse(200, responseData, "User's feed fetched successfully")
     );
 });
+
+
+
