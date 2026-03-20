@@ -1351,8 +1351,74 @@ const createFeed = asyncHandler(async (req, res) => {
         }
 
 
-        
 
+if (!isNotNullOrEmpty(fileTypes)) {
+      console.log("fileTypes is null or empty");
+    } else {
+      console.log("You can map the duration object " + fileTypes);
+      try {
+        console.log(
+          "fileTypes insidetry type of fileTypes " + typeof fileTypes
+        );
+        if (typeof fileTypes === "string") {
+          const jsonData = JSON.parse(fileTypes);
+          fileTypesData = {
+            fileId: jsonData.fileId,
+            fileType: jsonData.fileType,
+          };
+        } else {
+          fileTypesData = fileTypes.map((fileTypesObject) => {
+            const jsonData = JSON.parse(fileTypesObject);
+            // console.log(`durationObject ${jsonData.fileId}`);
+            return { fileId: jsonData.fileId, fileType: jsonData.fileType };
+          });
+        }
+
+        // durationData = processDurationData(duration);
+        // console.log(processDurationData(duration));
+      } catch (error) {
+        console.log(`errror ${error}`);
+      }
+
+      // console.log(durationData);
+      // console.log("After mapping durationData type of:" + typeof durationData);
+    }
+
+    if (!isNotNullOrEmpty(numberOfPages)) {
+      console.log("numberOfPages is null or empty");
+    } else {
+      console.log("You can map the numberOfPages object " + numberOfPages);
+      try {
+        console.log(
+          "numberOfPages insidetry type of numberOfPages " +
+          typeof numberOfPages
+        );
+        if (typeof numberOfPages === "string") {
+          const jsonData = JSON.parse(numberOfPages);
+          numberOfPagesData = {
+            fileId: jsonData.fileId,
+            numberOfPage: jsonData.numberOfPages,
+          };
+        } else {
+          numberOfPagesData = numberOfPages.map((numberOfPagesObject) => {
+            const jsonData = JSON.parse(numberOfPagesObject);
+            // console.log(`durationObject ${jsonData.fileId}`);
+            return {
+              fileId: jsonData.fileId,
+              numberOfPage: jsonData.numberOfPages,
+            };
+          });
+        }
+
+        // durationData = processDurationData(duration);
+        // console.log(processDurationData(duration));
+      } catch (error) {
+        console.log(`errror ${error}`);
+      }
+
+      // console.log(durationData);
+      // console.log("After mapping durationData type of:" + typeof durationData);
+    }
 
 
 
