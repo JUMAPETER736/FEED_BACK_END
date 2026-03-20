@@ -2780,3 +2780,94 @@ const getLikedPosts = asyncHandler(async (req, res) => {
       .json(new ApiResponse(500, {}, `Error: ${error.message}`));
   }
 });
+
+
+const getBookMarkedPosts = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10 } = req.query;
+
+  console.log("Starting getBookMarkedPosts for user:", req.user?._id);
+
+  try {
+    const userId = new mongoose.Types.ObjectId(req.user?._id);
+
+    const postAggregation = FeedBookmark.aggregate([
+      {
+        $match: {
+          bookmarkedBy: userId,
+        },
+      },
+      {
+        $sort: { createdAt: -1 },
+      },
+      {
+        $lookup: {
+          from: "feedposts",
+          localField: "postId",
+          foreignField: "_id",
+          as: "post",
+        },
+      },
+      {
+        $unwind: {
+          path: "$post",
+          preserveNullAndEmptyArrays: false,
+        },
+      },
+
+      // Store bookmark metadata before replacing root
+      {
+        $addFields: {
+          "post.bookmarkId": "$_id",
+          "post.bookmarkedBy": "$bookmarkedBy",
+          "post.bookmarkedAt": "$createdAt"
+        }
+      },
+
+      // Replace root with post so feedCommonAggregation works
+      {
+        $replaceRoot: {
+          newRoot: "$post"
+        }
+      },
+
+      //  Now apply feedCommonAggregation (it expects post at root level)
+      ...feedCommonAggregation(req),
+
+      //  Get all user IDs who bookmarked this post
+      {
+        $lookup: {
+          from: "feedbookmarks",
+          localField: "_id",
+          foreignField: "postId",
+          as: "bookmarkedByUserIds"
+        }
+      },
+
+      // Override isBookmarked and add user IDs
+      {
+        $addFields: {
+          isBookmarked: true,
+          bookmarkedByUserIds: "$bookmarkedByUserIds.bookmarkedBy",
+          bookmarkCount: { $size: "$bookmarkedByUserIds" }
+        }
+      }
+    ]);
+
+    console.log("Executing aggregation with pagination");
+
+    
+
+      //  Match getFeed pattern - return posts directly
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(200, posts, "All Bookmarked Feed Posts fetched successfully")
+        //                     ↑↑↑↑↑ Return posts directly, not { data: posts }
+      );
+  } catch (error) {
+    console.error("Error All fetching bookmarked posts:", error);
+    return res
+      .status(500)
+      .json(new ApiResponse(500, {}, `Error: ${error.message}`));
+  }
+});
