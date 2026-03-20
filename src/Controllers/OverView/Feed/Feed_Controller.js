@@ -3922,7 +3922,7 @@ const getSearchAllFeed = asyncHandler(async (req, res) => {
     };
 
 
-  const nameQuery = parseNameQuery(query);
+ const nameQuery = parseNameQuery(query);
     console.log("Parsed name query:", nameQuery);
 
     let socialProfileIds = [];
@@ -4013,7 +4013,7 @@ const getSearchAllFeed = asyncHandler(async (req, res) => {
     }
 
 
-    // Aggregation pipeline
+// Aggregation pipeline
     const postAggregation = FeedPost.aggregate([
       // Your base feed aggregation (must include author population)
       ...feedAggregation(req),
@@ -4155,5 +4155,3 @@ const getSearchAllFeed = asyncHandler(async (req, res) => {
     );
   }
 });
-
-
