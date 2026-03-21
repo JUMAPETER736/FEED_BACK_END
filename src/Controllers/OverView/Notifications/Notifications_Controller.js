@@ -425,3 +425,55 @@ const deleteNotification = asyncHandler(async (req, res) => {
   }
 
 });
+
+
+const markNotificationUnread = asyncHandler(async (req, res) => {
+  try {
+
+    const { notificationId } = req.params;
+
+    if (!notificationId) {
+      return res.status(400).json({
+        status: 400,
+        data: null,
+        message: 'Notification ID is required',
+      });
+    }
+
+
+    const notification = await UnifiedNotification.findOneAndUpdate(
+      {
+        _id: notificationId,
+        owner: req.user._id, // Ensure the notification belongs to the authenticated user
+      },
+      {
+        $set: {
+          read: false,
+        },
+      },
+      {
+        new: true,
+      }
+    );
+
+
+    if (!notification) {
+      return res.status(404).json(new ApiResponse(404, null, 'Notification not found'));
+    }
+
+    emitUnreadCountUpdate(req, String(req.user._id));
+
+    return res.status(200).json(new ApiResponse(200, notification, 'Notification marked as read'));
+
+  } catch (error) {
+    console.log("Something went wrong", error);
+    return res.status(500).json({
+      error: "Failed to fetch notifications",
+      message: error.message
+    });
+  }
+
+});
+
+
+export { getAllNotifications, getAllUnifiedNotifications, markNotificationRead, getAllCommentNotification, deleteNotification, markNotificationUnread };
