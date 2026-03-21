@@ -169,7 +169,7 @@ const blockUnblockUser = asyncHandler(async (req, res) => {
                 )
             );
     } else {
-        console.log("✓ No existing block - Blocking...");
+        console.log(" No existing block - Blocking...");
         await SocialBlock.create({
             blockerId: currentUserId,
             blockedId: new mongoose.Types.ObjectId(userId),
@@ -186,3 +186,85 @@ const blockUnblockUser = asyncHandler(async (req, res) => {
             );
     }
 });
+
+
+
+const getBlockedUsers = asyncHandler(async (req, res) => {
+    const { page = 1, limit = 10 } = req.query;
+    const currentUserId = req.user._id;
+
+    const blockedUsersAggregate = SocialBlock.aggregate([
+        {
+            $match: {
+                blockerId: currentUserId,
+            },
+        },
+        {
+            $lookup: {
+                from: "users",
+                localField: "blockedId",
+                foreignField: "_id",
+                as: "blockedUser",
+                pipeline: [
+                    {
+                        $project: {
+                            _id: 1,
+                            username: 1,
+                            email: 1,
+                            avatar: 1,
+                            firstName: 1,
+                            lastName: 1,
+                        },
+                    },
+                ],
+            },
+        },
+        {
+            $unwind: "$blockedUser",
+        },
+        {
+            $project: {
+                _id: 1,
+                blockedAt: "$createdAt",
+                user: "$blockedUser",
+            },
+        },
+        {
+            $sort: { createdAt: -1 },
+        },
+    ]);
+
+    const blockedUsers = await SocialBlock.aggregatePaginate(
+        blockedUsersAggregate,
+        getMongoosePaginationOptions({
+            page,
+            limit,
+            customLabels: {
+                totalDocs: "totalBlocked",
+                docs: "blockedUsers",
+            },
+        })
+    );
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            {
+                blockedUsers: blockedUsers.blockedUsers,
+                totalBlocked: blockedUsers.totalBlocked,
+                page: blockedUsers.page,
+                limit: blockedUsers.limit
+            },
+            "Blocked users fetched successfully"
+        )
+    );
+
+});
+
+// Export all functions
+export {
+    blockUser,
+    unblockUser,
+    blockUnblockUser,
+    getBlockedUsers
+};
