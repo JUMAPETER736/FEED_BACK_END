@@ -316,3 +316,55 @@ export const walkingBillboardAdvertisement = asyncHandler(async (req, res) => {
                   continue;
                 }
               }
+
+              const businessLocationInfo = profile.contact?.address;
+
+              if (!businessLocationInfo) {
+                continue;
+              } else {
+
+                const user = {
+                  userId: String(profile.owner?._id),
+                  avatar: String(profile.owner?.avatar.url),
+                  username: String(profile.owner?.username)
+                };
+
+                const businessAdvertisement = {
+                  owner: user,
+                  businessId: String(profile._id),
+                  businessName: profile.businessName,
+                  businessDescription: profile.businessDescription,
+                  city: String(businessLocationInfo),
+                  image: profile.backgroundPhoto,
+                  items: businessProfileProducts
+                };
+
+                if (businessProfileProducts.length >= 3) {
+                  emitSocketEvent(req, String(userId), "walkingBillboardLocationAdvertisement", businessAdvertisement);
+                  console.log("Advertisement sent");
+                  continue;
+                } else {
+                  continue;
+                }
+              }
+
+            } else {
+              continue;
+            }
+          }
+
+        }
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Done processing business profiles"
+    });
+
+  } catch (error) {
+    console.log("Something went wrong", error);
+    return;
+  }
+
+});
