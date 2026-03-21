@@ -233,3 +233,36 @@ export const businesslocationAdvertisement = asyncHandler(async (req, res) => {
     console.log("Something went wrong!!", error);
   }
 });
+
+
+
+export const walkingBillboardAdvertisement = asyncHandler(async (req, res) => {
+  try {
+
+    const { latitude, longitude, accuracy } = req.body;
+
+    const userId = req.user._id;
+
+    if (!latitude || !longitude || !accuracy) {
+      return res.status(400).json({
+        success: false,
+        message: "latitude, longitude, accuracy required"
+      });
+    }
+
+    const userLocationInfo = {
+      latitude: Number(latitude),
+      longitude: Number(longitude),
+      accuracy: Number(accuracy)
+    };
+
+    const profiles = await BusinessProfile.find({})
+      .select("_id owner backgroundPhoto businessName businessDescription businessType location.walkingBillboard contact.address")
+      .lean().populate("owner");
+
+    if (profiles.length === 0) {
+      return res.status(404).json({
+        success: true,
+        message: "Profiles not found"
+      });
+    }
