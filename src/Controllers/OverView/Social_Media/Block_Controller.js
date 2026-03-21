@@ -119,3 +119,70 @@ const unblockUser = asyncHandler(async (req, res) => {
             )
         );
 });
+
+
+// Toggle block/unblock (your original function)
+const blockUnblockUser = asyncHandler(async (req, res) => {
+    const { userId } = req.params;
+    const currentUserId = req.user._id;
+
+
+    console.log("Block/Unblock TOGGLE Request Received");
+    console.log("Current User ID:", currentUserId);
+    console.log("Target User ID:", userId);
+    console.log("Method:", req.method);
+    console.log("Headers:", req.headers);
+
+
+    // Prevent self-blocking
+    if (userId === currentUserId.toString()) {
+        console.log(" Self-block attempt");
+        throw new ApiError(400, "You cannot block yourself");
+    }
+
+    // Check if user exists
+    const userToBlock = await User.findById(userId);
+    if (!userToBlock) {
+        console.log("User not found:", userId);
+        throw new ApiError(404, "User does not exist");
+    }
+
+    console.log("User found:", userToBlock.username);
+
+    // Check if already blocked
+    const existingBlock = await SocialBlock.findOne({
+        blockerId: currentUserId,
+        blockedId: new mongoose.Types.ObjectId(userId),
+    });
+
+    if (existingBlock) {
+        console.log("Existing block found - Unblocking...");
+        await SocialBlock.findByIdAndDelete(existingBlock._id);
+
+        return res
+            .status(200)
+            .json(
+                new ApiResponse(
+                    200,
+                    { blocked: false },
+                    "User unblocked successfully"
+                )
+            );
+    } else {
+        console.log("✓ No existing block - Blocking...");
+        await SocialBlock.create({
+            blockerId: currentUserId,
+            blockedId: new mongoose.Types.ObjectId(userId),
+        });
+
+        return res
+            .status(200)
+            .json(
+                new ApiResponse(
+                    200,
+                    { blocked: true },
+                    "User blocked successfully"
+                )
+            );
+    }
+});
