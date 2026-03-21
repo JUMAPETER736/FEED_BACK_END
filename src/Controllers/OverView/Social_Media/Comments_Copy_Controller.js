@@ -274,3 +274,142 @@ const addComment = asyncHandler(async (req, res) => {
     .status(201)
     .json(new ApiResponse(201, comment, "Comment added successfully"));
 });
+
+
+const getPostComments = asyncHandler(async (req, res) => {
+  const { postId } = req.params;
+  const { page = 1, limit = 10 } = req.query;
+  const commentAggregation = SocialComment.aggregate([
+    {
+      $match: {
+        postId: new mongoose.Types.ObjectId(postId),
+      },
+    },
+    // {
+    //   $sort: { createdAt: -1 } // Sort by createdAt in descending order
+    // },
+    {
+      $lookup: {
+        from: "sociallikes",
+        localField: "_id",
+        foreignField: "commentId",
+        as: "likes",
+      },
+    },
+    {
+      $lookup: {
+        from: "sociallikes",
+        localField: "_id",
+        foreignField: "commentId",
+        as: "isLiked",
+        pipeline: [
+          {
+            $match: {
+              likedBy: new mongoose.Types.ObjectId(req.user?._id),
+            },
+          },
+        ],
+      },
+    },
+    {
+      $lookup: {
+        from: "socialcommentreplies",
+        localField: "_id",
+        foreignField: "commentId",
+        as: "replies",
+      },
+    },
+    {
+      $lookup: {
+        from: "socialprofiles",
+        localField: "author",
+        foreignField: "owner",
+        as: "author",
+        pipeline: [
+          {
+            $lookup: {
+              from: "users",
+              localField: "owner",
+              foreignField: "_id",
+              as: "account",
+              pipeline: [
+                {
+                  $project: {
+                    avatar: 1,
+                    email: 1,
+                    username: 1,
+                  },
+                },
+              ],
+            },
+          },
+          {
+            $project: {
+              firstName: 1,
+              lastName: 1,
+              account: 1,
+            },
+          },
+          {
+            $addFields: {
+              account: { $first: "$account" },
+            },
+          },
+        ],
+      },
+    },
+    {
+      $addFields: {
+        author: { $first: "$author" },
+        likes: { $size: "$likes" },
+        isLiked: {
+          $cond: {
+            if: {
+              $gte: [
+                {
+                  // if the isLiked key has document in it
+                  $size: "$isLiked",
+                },
+                1,
+              ],
+            },
+            then: true,
+            else: false,
+          },
+        },
+        replyCount: { $size: "$replies" },
+      },
+      // $addFields: {
+      //   replyCount: { $size: "$replies" },
+      // },
+    },
+  ]);
+
+  // console.log("Aggregation Pipeline: ", JSON.stringify(commentAggregation));
+
+  const comments = await SocialComment.aggregatePaginate(
+    commentAggregation,
+    getMongoosePaginationOptions({
+      page,
+      limit,
+      customLabels: {
+        totalDocs: "totalComments",
+        docs: "comments",
+      },
+    })
+  );
+
+  // Log reply count for each comment
+  // comments.forEach(comment => {
+  //   console.log(`Comment with _id ${comment._id} has ${comment.replyCount} replies.`);
+  // });
+
+  // console.log(`comment replies ${comments}`)
+  // Log comments or comment replies
+// console.log(`comments: ${JSON.stringify(comments, null, 2)}`);
+
+// console.log("Resulting Comments: ", JSON.stringify(comments));
+  return res
+    .status(200)
+    .json(new ApiResponse(200, comments, "Post comments fetched successfully"));
+});
