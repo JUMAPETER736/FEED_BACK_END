@@ -101,3 +101,135 @@ function calculateDistanceVincenty(lat1, lon1, lat2, lon2, unit = 'km') {
 }
 
 
+/**
+ * Helper function to convert degrees to radians
+ * @param {number} degrees 
+ * @returns {number} radians
+ */
+function toRadians(degrees) {
+  return degrees * (Math.PI / 180);
+}
+
+
+// getting user location and process the location for events
+export const businesslocationAdvertisement = asyncHandler(async (req, res) => {
+
+  try {
+    const userId = req.user._id;
+
+    const { latitude, longitude, accuracy } = req.body;
+    if (!latitude || !longitude || !accuracy) {
+      return res.status(400).json({
+        success: false,
+        message: "latitude, longitude, accuracy text are required"
+      });
+    }
+
+    const userLocationInfo = {
+      latitude: Number(latitude),
+      longitude: Number(longitude),
+      accuracy: Number(accuracy),
+    }
+
+    const profiles = await BusinessProfile.find({})
+      .select("_id owner backgroundPhoto businessName businessDescription businessType location.businessLocation")
+      .lean().populate("owner");
+
+    if (profiles.length === 0) {
+      return res.status(404).json({
+        success: true,
+        message: "Profiles not found"
+      });
+    }
+
+    for (const profile of profiles) {
+      //skipping any business profile if business location is not enabled
+      if (!profile.location?.businessLocation.enabled) {
+        continue;
+      } else {
+
+        // skip the business profile if owner is the user
+        if (String(userId) === String(profile.owner?._id)) {
+          continue;
+        } else {
+          // getting business location info
+          const businessLocationInfo = {
+            latitude: Number(profile.location?.businessLocation.locationInfo.latitude),
+            longitude: Number(profile.location?.businessLocation.locationInfo.longitude),
+            accuracy: Number(profile.location?.businessLocation.locationInfo.accuracy),
+            range: Number(profile.location?.businessLocation.locationInfo.range)
+          };
+
+          const combinedAccuracy = userLocationInfo.accuracy + businessLocationInfo.accuracy;
+
+          //check if combined accuracy is less than or equal to 20
+          if (combinedAccuracy <= 20) {
+            // calculate distance between the two locations
+            let distance = calculateDistanceVincenty(
+              userLocationInfo.latitude,
+              userLocationInfo.longitude,
+              businessLocationInfo.latitude,
+              businessLocationInfo.longitude,
+              "meters"
+            );
+
+            distance = Math.ceil(distance);
+
+            // check if distance is within the business location range
+            if (distance <= businessLocationInfo.range) {
+
+              const products = await BusinessProduct.find({})
+                .select("owner itemName")
+                .lean();
+
+              const businessProfileProducts = [];
+
+              for (const product of products) {
+                if (String(product.owner) === String(profile.owner?._id)) {
+                  businessProfileProducts.push(product);
+                  continue;
+                } else {
+                  continue;
+                }
+              }
+
+
+              const user = {
+                userId: String(profile.owner?._id),
+                avatar: String(profile.owner?.avatar.url),
+                username: String(profile.owner?.username)
+              };
+
+              const advertisment = {
+                owner: user,
+                businessId: String(profile._id),
+                businessName: profile.businessName,
+                businessDescription: profile.businessDescription,
+                distance: String(distance),
+                image: profile.backgroundPhoto,
+                items: businessProfileProducts
+              };
+
+              //send an advertisement to the user about the business near by  
+              console.log("Advertisement sent");
+              emitSocketEvent(req, String(userId), "businessLocationAdvertisement", advertisment);
+              continue;
+            } else {
+              //skipping the business profile if accuracy is greater than 20 meters
+              continue;
+            }
+          }
+        }
+
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Done processing business profiles"
+    });
+
+  } catch (error) {
+    console.log("Something went wrong!!", error);
+  }
+});
