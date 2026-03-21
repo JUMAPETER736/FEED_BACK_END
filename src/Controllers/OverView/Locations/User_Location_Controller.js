@@ -266,3 +266,53 @@ export const walkingBillboardAdvertisement = asyncHandler(async (req, res) => {
         message: "Profiles not found"
       });
     }
+
+
+    for (const profile of profiles) {
+
+      if (!profile.location?.walkingBillboard.enabled) {
+        continue;
+      } else {
+
+        if (String(userId) === String(profile.owner?._id)) {
+          continue;
+        } else {
+
+          const billBoardLiveLocation = {
+            latitude: Number(profile.location?.walkingBillboard.liveLocationInfo.latitude),
+            longitude: Number(profile.location?.walkingBillboard.liveLocationInfo.longitude),
+            accuracy: Number(profile.location?.walkingBillboard.liveLocationInfo.accuracy),
+            range: Number(profile.location?.walkingBillboard.liveLocationInfo.range),
+          };
+
+          let combinedAccuracy = userLocationInfo.accuracy + billBoardLiveLocation.accuracy;
+          combinedAccuracy = Math.ceil(combinedAccuracy);
+
+          if (combinedAccuracy <= 20) {
+
+            let distance = calculateDistanceVincenty(
+              userLocationInfo.latitude,
+              userLocationInfo.longitude,
+              billBoardLiveLocation.latitude,
+              billBoardLiveLocation.longitude,
+              "meters"
+            );
+
+            distance = Math.ceil(distance);
+
+            if (distance <= billBoardLiveLocation.range) {
+
+              const products = await BusinessProduct.find({})
+                .select("-_id owner itemName price images")
+                .lean();
+
+              const businessProfileProducts = [];
+
+              for (const product of products) {
+                if (String(product.owner) === String(profile.owner?._id)) {
+                  businessProfileProducts.push(product);
+                  continue;
+                } else {
+                  continue;
+                }
+              }
