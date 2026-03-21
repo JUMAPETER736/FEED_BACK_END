@@ -402,3 +402,43 @@ const updatePost = asyncHandler(async (req, res) => {
 
   return res.status(200).json(new ApiResponse(200, aggregatedPost[0], "Short updated successfully"));
 });
+
+
+const removePostImage = asyncHandler(async (req, res) => {
+  const { postId, imageId } = req.params;
+
+  const post = await SocialPost.findOne({
+    _id: new mongoose.Types.ObjectId(postId),
+    author: req.user?._id,
+  });
+
+  if (!post) throw new ApiError(404, "Short does not exist");
+
+  const updatedPost = await SocialPost.findByIdAndUpdate(
+    postId,
+    { $pull: { images: { _id: new mongoose.Types.ObjectId(imageId) } } },
+    { new: true }
+  );
+
+  const removedImage = post.images?.find((image) => image._id.toString() === imageId);
+  if (removedImage) removeLocalFile(removedImage.localPath);
+
+  const aggregatedPost = await SocialPost.aggregate([
+    { $match: { _id: updatedPost._id } },
+    ...postCommonAggregation(req),
+  ]);
+
+  return res.status(200).json(new ApiResponse(200, aggregatedPost[0], "Short image removed successfully"));
+});
+
+const deletePost = asyncHandler(async (req, res) => {
+  const { postId } = req.params;
+
+  const post = await SocialPost.findOneAndDelete({ _id: postId, author: req.user._id });
+  if (!post) throw new ApiError(404, "Short does not exist");
+
+  const postImages = [...(post.images || [])];
+  postImages.map((image) => removeLocalFile(image.localPath));
+
+  return res.status(200).json(new ApiResponse(200, {}, "Short deleted successfully"));
+});
