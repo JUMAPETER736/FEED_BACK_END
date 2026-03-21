@@ -183,3 +183,33 @@ const unifiedNotificationCommonAggregation = (page = 1, pageSize = 5) => {
     },
   ];
 };
+
+
+
+const commentNotificationAggregation = () => {
+  return [
+    {
+      $lookup: {
+        from: "users",
+        foreignField: "_id",
+        localField: "sender",
+        as: "sender",
+        pipeline: [
+          {
+            $project: {
+              username: 1,
+              avatar: 1,
+              email: 1,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $addFields: {
+        // createdAt: {$ifNull: ["$createdAt", new Date(0)]},
+        sender: { $arrayElemAt: ["$sender", 0] }, // Take the first element of the array as sender
+      },
+    },
+  ];
+};
