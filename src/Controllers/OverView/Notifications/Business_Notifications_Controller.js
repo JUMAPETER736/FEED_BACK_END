@@ -145,3 +145,43 @@ export const markNotificationRead = asyncHandler(async (req, res) => {
         });
     }
 });
+
+
+export const deleteNotification = asyncHandler(async (req, res) => {
+    try {
+        const { notificationId } = req.params;
+        if (!notificationId) {
+            return res.status(400).json({
+                status: 400,
+                data: null,
+                message: 'Notification ID is required',
+            });
+        }
+
+        const isNotificationAvailable = await BusinessNotification.findById(notificationId);
+        if (!isNotificationAvailable) {
+            return res.status(400).json({
+                status: 400,
+                data: null,
+                message: 'Notification not found',
+            });
+        }
+
+        await BusinessNotification.findByIdAndDelete(notificationId);
+
+        await emitUnreadCountUpdate(req, req.user._id);
+
+        return res.status(200).json({
+            status: 200,
+            data: isNotificationAvailable,
+            message: "Notification deleted"
+        });
+
+    } catch (error) {
+        console.log("Something went wrong", error);
+        return res.status(500).json({
+            error: "Failed to fetch notifications",
+            message: error.message
+        });
+    }
+});
