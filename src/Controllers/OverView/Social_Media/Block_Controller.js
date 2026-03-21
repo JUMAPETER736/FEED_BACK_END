@@ -13,23 +13,23 @@ const blockUser = asyncHandler(async (req, res) => {
     const { userId } = req.params;
     const currentUserId = req.user._id;
 
-    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    
     console.log("BLOCK Request Received");
     console.log("Current User ID:", currentUserId);
     console.log("Target User ID:", userId);
     console.log("Method:", req.method);
-    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+ 
 
     // Prevent self-blocking
     if (userId === currentUserId.toString()) {
-        console.log("❌ Self-block attempt");
+        console.log("Self-block attempt");
         throw new ApiError(400, "You cannot block yourself");
     }
 
     // Check if user exists
     const userToBlock = await User.findById(userId);
     if (!userToBlock) {
-        console.log("❌ User not found:", userId);
+        console.log("User not found:", userId);
         throw new ApiError(404, "User does not exist");
     }
 
@@ -42,7 +42,7 @@ const blockUser = asyncHandler(async (req, res) => {
     });
 
     if (existingBlock) {
-        console.log("⚠️ You  blocked");
+        console.log("You  blocked");
         return res
             .status(200)
             .json(
@@ -61,7 +61,7 @@ const blockUser = asyncHandler(async (req, res) => {
         blockedId: new mongoose.Types.ObjectId(userId),
     });
 
-    console.log("✅ Blocked successfully");
+    console.log(" Blocked successfully");
     return res
         .status(200)
         .json(
@@ -69,6 +69,53 @@ const blockUser = asyncHandler(async (req, res) => {
                 200,
                 { blocked: true },
                 "Blocked successfully"
+            )
+        );
+});
+
+
+// Unblock user
+const unblockUser = asyncHandler(async (req, res) => {
+    const { userId } = req.params;
+    const currentUserId = req.user._id;
+
+    console.log("UNBLOCK Request Received");
+    console.log("Current User ID:", currentUserId);
+    console.log("Target User ID:", userId);
+    console.log("Method:", req.method);
+
+
+    // Check if block exists
+    const existingBlock = await SocialBlock.findOne({
+        blockerId: currentUserId,
+        blockedId: new mongoose.Types.ObjectId(userId),
+    });
+
+    if (!existingBlock) {
+        console.log(" User is not blocked");
+        return res
+            .status(200)
+            .json(
+                new ApiResponse(
+                    200,
+                    { blocked: false },
+                    "User is not blocked"
+                )
+            );
+    }
+
+    // Unblock: Delete the block document
+    console.log("Unblocking user...");
+    await SocialBlock.findByIdAndDelete(existingBlock._id);
+
+    console.log(" User unblocked successfully");
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                { blocked: false },
+                "User unblocked successfully"
             )
         );
 });
