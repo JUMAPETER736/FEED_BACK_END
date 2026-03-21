@@ -110,4 +110,41 @@ const likeDislikeComment = asyncHandler(async (req, res) => {
   return res.status(200).json(new ApiResponse(200, { isLiked: true }, "Liked successfully"));
 });
 
+const likeDislikeCommentReply = asyncHandler(async (req, res) => {
+  const { commentReplyId } = req.params;
 
+  const commentReply = await SocialCommentReply.findById(commentReplyId);
+  if (!commentReply) throw new ApiError(404, "Comment reply does not exist");
+
+  const comment = await SocialComment.findById(commentReply.commentId);
+  if (!comment) throw new ApiError(404, "Parent comment does not exist");
+
+  const existing = await SocialLike.findOne({ commentReplyId, likedBy: req.user._id });
+
+  if (existing) {
+    await SocialLike.findOneAndDelete({ commentReplyId, likedBy: req.user._id });
+    return res.status(200).json(new ApiResponse(200, { isLiked: false }, "Unliked successfully"));
+  }
+
+  await SocialLike.create({ commentReplyId, likedBy: req.user._id });
+
+  // Don't notify when liking your own reply
+  if (String(commentReply.author) !== String(req.user._id)) {
+    await createAndEmitNotification(req, {
+      owner: commentReply.author,
+      type: "commentReplyLiked",                     // ← fixed (was "postLiked")
+      message: `${req.user.username} liked your reply.`,
+      avatar: req.user.avatar,
+      data: {
+        postId: comment.postId,
+        for: "social",
+        commentId: comment._id,
+        commentReplyId: commentReply._id,
+      },
+    });
+  }
+
+  return res.status(200).json(new ApiResponse(200, { isLiked: true }, "Liked successfully"));
+});
+
+export { likeDislikePost, likeDislikeComment, likeDislikeCommentReply };
