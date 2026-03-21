@@ -247,3 +247,70 @@ const getAllUnifiedNotifications = asyncHandler(async (req, res) => {
 
 
 });
+
+
+const getAllNotifications = asyncHandler(async (req, res) => {
+  const notifications = await Notification.aggregate([
+    {
+      $match: {
+        owner: new mongoose.Types.ObjectId(req.user._id),
+      },
+    },
+    {
+      $facet: {
+        likeNotifications: [
+          ...notificationCommonAggregation(),
+          {
+            $sort: {
+              createdAt: -1
+            },
+          },
+        ],
+        commentNotifications: [
+          ...notificationCommonAggregation(),
+          {
+            $sort: {
+              createdAt: -1
+            },
+          },
+        ],
+        replyNotifications: [
+          ...notificationCommonAggregation(),
+          {
+            $sort: {
+              createdAt: -1
+            },
+          },
+        ],
+        followUnFollowNotification: [
+          ...notificationCommonAggregation(),
+          {
+            $sort: { createdAt: -1 },
+          },
+        ],
+        favoriteNotification: [
+          ...notificationCommonAggregation(),
+          {
+            $sort: { createdAt: -1 },
+          },
+        ],
+        friendSuggestionNotification: [
+          ...notificationCommonAggregation(),
+          {
+            $sort: { createdAt: -1 },
+          },
+        ],
+        // unfollowNotification:[
+        //   ...notificationCommonAggregation(),
+        //   {
+        //     $sort: { createdAt: -1 },
+        //   },
+        // ],
+      },
+    },
+  ]);
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, notifications || [], 'Notifications fetched successfully'));
+});
