@@ -51,3 +51,31 @@ const createAndEmitNotification = async (req, { owner, type, message, avatar, da
 };
 
 
+const likeDislikePost = asyncHandler(async (req, res) => {
+  const { postId } = req.params;
+
+  const post = await SocialPost.findById(postId);
+  if (!post) throw new ApiError(404, "Post does not exist");
+
+  const existing = await SocialLike.findOne({ postId, likedBy: req.user._id });
+
+  if (existing) {
+    await SocialLike.findOneAndDelete({ postId, likedBy: req.user._id });
+    return res.status(200).json(new ApiResponse(200, { isLiked: false }, "Unliked successfully"));
+  }
+
+  await SocialLike.create({ postId: post._id, likedBy: req.user._id });
+
+  // Only notify if it's not the post author liking their own post
+  if (String(post.author) !== String(req.user._id)) {
+    await createAndEmitNotification(req, {
+      owner: post.author,
+      type: "postLiked",
+      message: `${req.user.username} liked the short you posted`,
+      avatar: req.user.avatar,
+      data: { postId: post._id, for: "social", commentId: null, commentReplyId: null },
+    });
+  }
+
+  return res.status(200).json(new ApiResponse(200, { isLiked: true }, "Liked successfully"));
+});
