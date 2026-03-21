@@ -337,3 +337,49 @@ const getAllCommentNotification = asyncHandler(async (req, res) => {
       new ApiResponse(200, notifications || [], "Notifications fetched successfully")
     );
 });
+
+
+
+/**
+* Controller function to mark a notification as read.
+* @param {Request} req Express request object
+* @param {Response} res Express response object
+* @returns {Promise<void>}
+*/
+const markNotificationRead = asyncHandler(async (req, res) => {
+  const { notificationId } = req.params;
+
+  if (!notificationId) {
+    return res.status(400).json({
+      status: 400,
+      data: null,
+      message: 'Notification ID is required',
+    });
+  }
+
+
+  const notification = await UnifiedNotification.findOneAndUpdate(
+    {
+      _id: notificationId,
+      owner: req.user._id, // Ensure the notification belongs to the authenticated user
+    },
+    {
+      $set: {
+        read: true,
+      },
+    },
+    {
+      new: true,
+    }
+  );
+
+
+  if (!notification) {
+    return res.status(404).json(new ApiResponse(404, null, 'Notification not found'));
+  }
+
+  emitUnreadCountUpdate(req, String(req.user._id));
+
+  return res.status(200).json(new ApiResponse(200, notification, 'Notification marked as read'));
+
+});
