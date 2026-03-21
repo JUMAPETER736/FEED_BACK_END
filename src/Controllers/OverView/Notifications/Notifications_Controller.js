@@ -314,3 +314,26 @@ const getAllNotifications = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, notifications || [], 'Notifications fetched successfully'));
 });
+
+
+
+const getAllCommentNotification = asyncHandler(async (req, res) => {
+  const notifications = await CommentNotification.aggregate([
+    {
+      $match: {
+        owner: new mongoose.Types.ObjectId(req.user._id), // Assuming recipient field exists in Notification schema
+      },
+    },
+    ...commentNotificationAggregation(),
+    {
+      $sort: {
+        createdAt: -1,
+      },
+    },
+  ]);
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, notifications || [], "Notifications fetched successfully")
+    );
+});
