@@ -143,3 +143,134 @@ const postCommonAggregation = (req) => {
     },
   ];
 };
+
+
+
+const commentNotificationAggregation = () => {
+  return [
+    ...notificationCommonAggregation(),
+    {
+      $lookup: {
+        from: "posts",
+        foreignField: "_id",
+        localField: "postId",
+        as: "post",
+        pipeline: [
+          {
+            $project: {
+              title: 1,
+              content: 1,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $addFields: {
+        post: { $arrayElemAt: ["$post", 0] }, // Take the first element of the array as post
+      },
+    },
+    {
+      $lookup: {
+        from: "comments",
+        foreignField: "_id",
+        localField: "commentId",
+        as: "comment",
+        pipeline: [
+          {
+            $project: {
+              text: 1,
+              createdAt: 1,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $addFields: {
+        comment: { $arrayElemAt: ["$comment", 0] }, // Take the first element of the array as comment
+      },
+    },
+  ];
+};
+
+
+
+const addComment = asyncHandler(async (req, res) => {
+  const { postId } = req.params;
+  const { content } = req.body;
+
+  const comment = await SocialComment.create({
+    content,
+    author: req.user?._id,
+    postId,
+  });
+
+  const post = await SocialPost.aggregate([
+    {
+      $match: {
+        _id: new mongoose.Types.ObjectId(postId),
+      },
+    },
+    ...postCommonAggregation(req),
+  ]);
+
+
+  const receiverId = post[0].author.account._id
+
+  console.log(`post owner: ${receiverId}`)
+
+  const originalPost = await SocialComment.findById(postId);
+  if (!originalPost) {
+    throw new ApiError(404, "Original post not found");
+  }
+
+    // Create a snippet of the original post content
+    const originalPostCaption = originalPost.content;
+
+
+  if (receiverId.toString() !== req.user._id.toString()) {
+    const user = await User.findById(receiverId);
+
+    console.log(`Creating notification for user: ${user.username} with ID: ${receiverId}`);
+    await CommentNotification.create({
+      owner: receiverId,
+      sender: req.user._id,
+      message: `${req.user.username} commented on your video short.${originalPostCaption.slice(0,10)}`,
+      avatar: req.user.avatar,
+      type: "comment",
+      
+    
+    });
+
+    const notifications = await CommentNotification.aggregate([
+      {
+        $match: {
+          owner: new mongoose.Types.ObjectId(receiverId),
+        },
+      },
+      // ...notificationCommonAggregation(),
+      ...commentNotificationAggregation(),
+      {
+        $sort: {
+          createdAt: -1,
+        },
+      },
+    ]);
+
+    const newNotification = notifications[0];
+    if (!newNotification) {
+      throw new ApiError(500, 'Internal server error');
+    }
+
+
+
+    // Emit socket event for the new notification
+    emitSocketEvent(req, `${user._id}`, 'onCommentPost', newNotification);
+  }
+  //new code ends here 
+
+  return res
+    .status(201)
+    .json(new ApiResponse(201, comment, "Comment added successfully"));
+});
