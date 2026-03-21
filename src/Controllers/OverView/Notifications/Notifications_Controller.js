@@ -213,3 +213,37 @@ const commentNotificationAggregation = () => {
     },
   ];
 };
+
+
+const getAllUnifiedNotifications = asyncHandler(async (req, res) => {
+
+  const page = parseInt(req.query.page, 10) || 1;
+  const limit = parseInt(req.query.limit, 10) || 10;
+  const userId = req.user._id;
+
+  const notifications = await UnifiedNotification.aggregate([
+    {
+      $match: {
+        owner: new mongoose.Types.ObjectId(userId), // Assuming recipient field exists in Notification schema
+      },
+    },
+    ...unifiedNotificationCommonAggregation(page, limit)
+  ]);
+
+  // Get total count for pagination
+  const totalCount = await UnifiedNotification.countDocuments({
+    owner: new mongoose.Types.ObjectId(userId)
+  });
+
+  const totalPages = Math.ceil(totalCount / limit);
+  const hasNextPage = page < totalPages;
+
+  return res.status(200).json({
+    data: notifications,
+    currentPage: page,
+    totalPages: totalPages,
+    hasNextPage: hasNextPage
+  });
+
+
+});
