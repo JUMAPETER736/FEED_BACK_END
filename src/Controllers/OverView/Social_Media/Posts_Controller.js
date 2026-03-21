@@ -357,3 +357,48 @@ const postCommonAggregation = (req) => {
     },
   ];
 };
+
+
+const updatePost = asyncHandler(async (req, res) => {
+  const { content, tags } = req.body;
+  const { postId } = req.params;
+
+  const post = await SocialPost.findOne({
+    _id: new mongoose.Types.ObjectId(postId),
+    author: req.user?._id,
+  });
+
+  if (!post) throw new ApiError(404, "Short does not exist");
+
+  let images =
+    req.files?.images && req.files.images?.length
+      ? req.files.images.map((image) => ({
+        url: getStaticFilePath(req, image.filename),
+        localPath: getLocalPath(image.filename),
+      }))
+      : [];
+
+  const existedImages = post.images.length;
+  const newImages = images.length;
+  const totalImages = existedImages + newImages;
+
+  if (totalImages > MAXIMUM_SOCIAL_POST_IMAGE_COUNT) {
+    images?.map((img) => removeLocalFile(img.localPath));
+    throw new ApiError(400, `Maximum ${MAXIMUM_SOCIAL_POST_IMAGE_COUNT} images allowed. Already has ${existedImages}.`);
+  }
+
+  images = [...post.images, ...images];
+
+  const updatedPost = await SocialPost.findByIdAndUpdate(
+    postId,
+    { $set: { content, tags, images } },
+    { new: true }
+  );
+
+  const aggregatedPost = await SocialPost.aggregate([
+    { $match: { _id: updatedPost._id } },
+    ...postCommonAggregation(req),
+  ]);
+
+  return res.status(200).json(new ApiResponse(200, aggregatedPost[0], "Short updated successfully"));
+});
