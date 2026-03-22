@@ -687,3 +687,27 @@ const getPostByFileId = asyncHandler(async (req, res) => {
     res.status(500).json({ message: "An error occurred while retrieving shorts" });
   }
 });
+
+
+
+const getPostsByTag = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10 } = req.query;
+  const { tag } = req.params;
+
+  const postAggregation = SocialPost.aggregate([
+    { $match: SHORTS_MATCH },
+    { $redact: { $cond: { if: { $in: [tag, "$tags"] }, then: "$$KEEP", else: "$$PRUNE" } } },
+    ...postCommonAggregation(req),
+  ]);
+
+  const posts = await SocialPost.aggregatePaginate(
+    postAggregation,
+    getMongoosePaginationOptions({
+      page,
+      limit,
+      customLabels: { totalDocs: "totalShorts", docs: "shorts" },
+    })
+  );
+
+  return res.status(200).json(new ApiResponse(200, posts, `Shorts with tag #${tag} fetched successfully`));
+});
