@@ -125,3 +125,49 @@ const postCommonAggregation = (req) => {
         ],
       },
     },
+
+    {
+      $addFields: {
+        // author: { $first: "$author" },
+        author: {
+          $mergeObjects: [
+            { $first: "$author" },
+            { authorId: "$author._id" }, // Assuming the author ID is available in the "author" field
+          ],
+        },
+        likes: { $size: "$likes" },
+        comments: { $size: "$comments" },
+        isLiked: {
+          $cond: {
+            if: {
+              $gte: [
+                {
+                  // if the isLiked key has document in it
+                  $size: "$isLiked",
+                },
+                1,
+              ],
+            },
+            then: true,
+            else: false,
+          },
+        },
+        isBookmarked: {
+          $cond: {
+            if: {
+              $gte: [
+                {
+                  // if the isBookmarked key has document in it
+                  $size: "$isBookmarked",
+                },
+                1,
+              ],
+            },
+            then: true,
+            else: false,
+          },
+        },
+      },
+    },
+  ];
+};
