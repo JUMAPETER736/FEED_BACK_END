@@ -950,3 +950,30 @@ const getSharedShorts = asyncHandler(async (req, res) => {
 
   return res.status(200).json(new ApiResponse(200, posts, "Shared shorts fetched successfully"));
 });
+
+
+const getRepostedShorts = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10 } = req.query;
+
+  const aggregation = SocialPost.aggregate([
+    {
+      $match: {
+        ...SHORTS_MATCH,
+        $or: [
+          { reposts: { $exists: true, $gt: 0 } },
+          { repostCount: { $exists: true, $gt: 0 } },
+          { isRepost: true },
+        ],
+      },
+    },
+    { $sort: { createdAt: -1 } },
+    ...postCommonAggregation(req),
+  ]);
+
+  const posts = await SocialPost.aggregatePaginate(
+    aggregation,
+    getMongoosePaginationOptions({ page, limit, customLabels: { totalDocs: "totalRepostedShorts", docs: "repostedShorts" } })
+  );
+
+  return res.status(200).json(new ApiResponse(200, posts, "Reposted shorts fetched successfully"));
+});
