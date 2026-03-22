@@ -323,3 +323,49 @@ onst addComment = asyncHandler(async (req, res) => {
         console.log(
           `Creating notification for user: ${user.username} with ID: ${receiverId}`
         );
+     // Follow Notification
+        await UnifiedNotification.create({
+          owner: receiverId,
+          sender: req.user._id,
+          message: `${req.user.username} commented on your short`,
+          avatar: req.user.avatar,
+          type: "onCommentPost",
+          data: {
+            postId: commentedPost._id,
+            for: "social",
+            commentId: comment._id,
+            commentReplyId: null
+          },
+        });
+
+        // const commentId = new ObjectId(comment._id);
+        const notifications = await UnifiedNotification.aggregate([
+          {
+            $match: {
+              owner: new mongoose.Types.ObjectId(receiverId),
+            },
+          },
+          ...unifiedNotificationCommonAggregation(),
+          {
+            $sort: {
+              createdAt: -1,
+            },
+          },
+        ]);
+
+
+        if (notifications.length === 0) {
+          throw new ApiError(500, "Internal server error");
+        }
+
+        const newNotification = notifications[0];
+        if (!newNotification) {
+          throw new ApiError(500, "Internal server error");
+        }
+        console.log(`new comment notification: ${newNotification}`);
+
+        // Emit socket event for the new notification
+        emitSocketEvent(req, `${user._id}`, "onCommentPosted", newNotification);
+
+        emitUnreadCountUpdate(req, String(receiverId));
+      }
