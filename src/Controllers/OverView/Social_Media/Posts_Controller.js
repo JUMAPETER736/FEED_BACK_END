@@ -711,3 +711,83 @@ const getPostsByTag = asyncHandler(async (req, res) => {
 
   return res.status(200).json(new ApiResponse(200, posts, `Shorts with tag #${tag} fetched successfully`));
 });
+
+
+const searchAllPosts = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10, query = "", userId = "" } = req.query;
+
+  if (!query.trim() && !userId.trim()) {
+    return res.status(200).json(
+      new ApiResponse(200, { posts: { shorts: [], totalShorts: 0, limit: parseInt(limit), page: parseInt(page), totalPages: 0 }, followList: [], searchQuery: query, userId }, "Shorts searched successfully")
+    );
+  }
+
+  let matchConditions = [SHORTS_MATCH];
+
+  if (userId.trim()) {
+    try {
+      const targetUser = await User.findById(userId);
+      if (!targetUser) {
+        return res.status(200).json(new ApiResponse(200, { posts: { shorts: [], totalShorts: 0, limit: parseInt(limit), page: parseInt(page), totalPages: 0 }, followList: [], searchQuery: query, userId }, "User not found"));
+      }
+      const targetSocialProfile = await SocialProfile.findOne({ owner: targetUser._id });
+      if (targetSocialProfile) matchConditions.push({ author: targetSocialProfile._id });
+    } catch (error) {
+      console.error("Error finding user:", error);
+      return res.status(200).json(new ApiResponse(200, { posts: { shorts: [], totalShorts: 0, limit: parseInt(limit), page: parseInt(page), totalPages: 0 }, followList: [], searchQuery: query, userId }, "Error finding user"));
+    }
+  }
+
+  const postAggregation = SocialPost.aggregate([
+    {
+      $lookup: {
+        from: "users",
+        localField: "author",
+        foreignField: "_id",
+        as: "authorInfo",
+      },
+    },
+    { $unwind: { path: "$authorInfo", preserveNullAndEmptyArrays: true } },
+    {
+      $match: {
+        $and: [
+          ...matchConditions,
+          ...(query.trim()
+            ? [{
+              $or: [
+                { content: { $regex: query, $options: "i" } },
+                { title: { $regex: query, $options: "i" } },
+                { tags: { $regex: query, $options: "i" } },
+                { "authorInfo.username": { $regex: query, $options: "i" } },
+                { "authorInfo.firstName": { $regex: query, $options: "i" } },
+                { "authorInfo.lastName": { $regex: query, $options: "i" } },
+              ]
+            }]
+            : []),
+        ],
+      },
+    },
+    ...postCommonAggregation(req),
+  ]);
+
+  const posts = await SocialPost.aggregatePaginate(
+    postAggregation,
+    getMongoosePaginationOptions({ page, limit, customLabels: { totalDocs: "totalShorts", docs: "shorts" } })
+  );
+
+  const ownerIDs = posts.shorts.map((post) => post.author?.account?._id ?? null);
+  const followList = [];
+
+  try {
+    await Promise.all(
+      ownerIDs.map(async (followersId) => {
+        const followInstance = await SocialFollow.findOne({ followerId: req.user?._id, followeeId: followersId });
+        followList.push({ followersId, isFollowing: !!followInstance });
+      })
+    );
+  } catch (error) {
+    console.error("Error in Promise.all:", error);
+  }
+
+  return res.status(200).json(new ApiResponse(200, { posts, followList, searchQuery: query, userId }, "Shorts searched successfully"));
+});
