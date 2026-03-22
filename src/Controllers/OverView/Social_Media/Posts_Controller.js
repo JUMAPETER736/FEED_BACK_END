@@ -924,3 +924,29 @@ const getCommentedShorts = asyncHandler(async (req, res) => {
 
   return res.status(200).json(new ApiResponse(200, { totalCommentedShorts: commentedPostIds.length, ...posts }, "Commented shorts fetched successfully"));
 });
+
+
+const getSharedShorts = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10 } = req.query;
+
+  const aggregation = SocialPost.aggregate([
+    {
+      $match: {
+        ...SHORTS_MATCH,
+        $or: [
+          { shares: { $exists: true, $gt: 0 } },
+          { shareCount: { $exists: true, $gt: 0 } },
+        ],
+      },
+    },
+    { $sort: { createdAt: -1 } },
+    ...postCommonAggregation(req),
+  ]);
+
+  const posts = await SocialPost.aggregatePaginate(
+    aggregation,
+    getMongoosePaginationOptions({ page, limit, customLabels: { totalDocs: "totalSharedShorts", docs: "sharedShorts" } })
+  );
+
+  return res.status(200).json(new ApiResponse(200, posts, "Shared shorts fetched successfully"));
+});
