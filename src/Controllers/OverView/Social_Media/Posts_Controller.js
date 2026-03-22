@@ -587,3 +587,23 @@ const getAllPosts = asyncHandler(async (req, res) => {
 });
 
 
+const getAllShortsByFeedShortBusinessId = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10 } = req.query;
+  const { feedShortsBusinessId } = req.params;
+
+  const postAggregation = SocialPost.aggregate([
+    { $match: { feedShortsBusinessId } },
+    ...postCommonAggregation(req),
+  ]);
+
+  const posts = await SocialPost.aggregatePaginate(
+    postAggregation,
+    getMongoosePaginationOptions({
+      page,
+      limit,
+      customLabels: { totalDocs: "totalShorts", docs: "shorts" },
+    })
+  );
+
+  return res.status(200).json(new ApiResponse(200, { posts }, "Shorts fetched successfully"));
+});
