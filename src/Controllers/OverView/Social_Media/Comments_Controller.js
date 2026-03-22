@@ -277,3 +277,49 @@ onst addComment = asyncHandler(async (req, res) => {
             return { url: docUrl, localPath: docLocalPath };
           })
           : [];
+ const comment = await SocialComment.create({
+        content,
+        contentType,
+        localUpdateId: localUpdateId,
+        author: req.user?._id,
+        postId,
+        duration: duration,
+        audios: audios || [],
+        images: images || [],
+        videos: videos || [],
+        docs: docs,
+        gifs: gif,
+        thumbnail: thumbnails,
+        fileName: fileName,
+        fileSize: fileSize,
+        fileType: fileType,
+        numberOfPages: numberOfPages,
+      });
+
+      console.log("Comment with images file added successfully:", comment);
+
+      const post = await SocialPost.aggregate([
+        {
+          $match: {
+            _id: new mongoose.Types.ObjectId(postId),
+          },
+        },
+        ...postCommonAggregation(req),
+      ]);
+
+      const commentedPost = post[0];
+      if (!commentedPost) {
+        throw new ApiError("Post not found");
+      }
+
+      const receiverId = post[0].author.account._id;
+      const authorName = post[0].author.account.username;
+
+      console.log(`post owner: ${receiverId}`);
+      console.log(`post owner: ${authorName}`);
+
+      if (receiverId.toString() !== req.user._id.toString()) {
+        const user = await User.findById(receiverId);
+        console.log(
+          `Creating notification for user: ${user.username} with ID: ${receiverId}`
+        );
