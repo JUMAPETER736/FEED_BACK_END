@@ -442,3 +442,148 @@ const deletePost = asyncHandler(async (req, res) => {
 
   return res.status(200).json(new ApiResponse(200, {}, "Short deleted successfully"));
 });
+
+
+
+const getAllPosts = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10, session_id } = req.query;
+
+  console.log("[getAllShorts] user:", req.user?._id, "page:", page);
+
+  try {
+    const userId = new mongoose.Types.ObjectId(req.user?._id);
+
+    // ── Step 1: Get ranked shot IDs from Python rec service ───────
+    let recommendedIds = [];
+    let recSourceMap   = {};
+    let rankedOrder    = {};
+    let recItems       = [];
+
+    try {
+      const recResponse = await getShotsRecommendations(
+        userId.toString(),
+        parseInt(limit),
+        parseInt(page),
+        session_id || null
+      );
+
+      recItems  = recResponse.items  || [];
+
+      if (recItems.length) {
+        recommendedIds = recItems
+          .map((r) => r.shot_id)
+          .filter((id) => mongoose.Types.ObjectId.isValid(id))
+          .map((id) => new mongoose.Types.ObjectId(id));
+
+        recSourceMap = Object.fromEntries(recItems.map((r) => [r.shot_id, r.rec_source]));
+        rankedOrder  = Object.fromEntries(recItems.map((r) => [r.shot_id, r.position]));
+      }
+    } catch (recErr) {
+      console.warn("[getAllShorts] Rec service unavailable, falling back to chronological:", recErr.message);
+    }
+
+    // ── Step 2: Build aggregation pipeline ────────────────────────
+    // Rec active: $match to recommended IDs, stamp __recPosition, sort at end
+    // Rec down:   run on all posts sorted chronologically
+    const matchStage = recommendedIds.length
+      ? [{ $match: { ...SHORTS_MATCH, _id: { $in: recommendedIds } } }]
+      : [{ $match: SHORTS_MATCH }];
+
+    const recPositionStage = recommendedIds.length
+      ? [{
+          $addFields: {
+            __recPosition: { $indexOfArray: [recommendedIds, "$_id"] },
+          },
+        }]
+      : [];
+
+    const postAggregation = SocialPost.aggregate([
+      ...matchStage,
+      ...recPositionStage,
+
+      ...postCommonAggregation(req),
+
+      // Sort: rec order when active, chronological as fallback
+      ...(recommendedIds.length
+        ? [{ $sort: { __recPosition: 1 } }]
+        : [{ $sort: { createdAt: -1 } }]
+      ),
+
+      {
+        $project: {
+          __recPosition: 0,
+        },
+      },
+    ]);
+
+    // ── Step 3: Execute ───────────────────────────────────────────
+    let shorts;
+
+    if (recommendedIds.length) {
+      // Rec active — Python already paginated, fetch exactly those shots
+      const raw = await postAggregation;
+
+      // JS sort as safety net — source of truth for order
+      const shotIdOrder = recItems.map((r) => r.shot_id);
+      raw.sort((a, b) => {
+        const posA = shotIdOrder.indexOf(a._id.toString());
+        const posB = shotIdOrder.indexOf(b._id.toString());
+        return posA - posB;
+      });
+
+      // Attach rec metadata
+      shorts = raw.map((shot) => ({
+        ...shot,
+        rec_source: recSourceMap[shot._id.toString()] || "unknown",
+        position:   rankedOrder[shot._id.toString()]  ?? 0,
+      }));
+    } else {
+      // Rec down — fall back to aggregatePaginate (chronological)
+      const data = await SocialPost.aggregatePaginate(
+        postAggregation,
+        getMongoosePaginationOptions({
+          page:  parseInt(page),
+          limit: parseInt(limit),
+          customLabels: { totalDocs: "totalShorts", docs: "shorts" },
+        })
+      );
+      shorts = data.shorts;
+    }
+
+    // ── Step 4: isFollowing — single batch query, not N+1 ─────────
+    if (req.user?._id && shorts.length) {
+      const authorAccountIds = shorts
+        .map((s) => s.author?.account?._id)
+        .filter(Boolean)
+        .map((id) => new mongoose.Types.ObjectId(id.toString()));
+
+      const follows = await SocialFollow.find({
+        followerId: req.user._id,
+        followeeId: { $in: authorAccountIds },
+      }).select("followeeId").lean();
+
+      const followedSet = new Set(follows.map((f) => f.followeeId.toString()));
+
+      shorts.forEach((shot) => {
+        const aid = shot.author?.account?._id?.toString();
+        shot.isFollowing = aid ? followedSet.has(aid) : false;
+      });
+    } else {
+      shorts.forEach((shot) => { shot.isFollowing = false; });
+    }
+
+    const posts = { shorts };
+
+    return res.status(200).json(
+      new ApiResponse(200, { posts }, "Shorts fetched successfully")
+    );
+
+  } catch (e) {
+    console.error("[getAllShorts] Error:", e.message);
+    return res.status(500).json(
+      new ApiResponse(500, {}, `Error fetching shorts: ${e.message}`)
+    );
+  }
+});
+
+
