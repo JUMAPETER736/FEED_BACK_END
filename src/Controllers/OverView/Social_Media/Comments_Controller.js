@@ -496,3 +496,169 @@ const getPostComments = asyncHandler(async (req, res) => {
               preserveNullAndEmptyArrays: true
             }
           },
+
+          {
+            $lookup: {
+              from: "businessfeedlikes",
+              localField: "_id",
+              foreignField: "commentReplyId",
+              as: "likes"
+            }
+          },
+
+          {
+            $lookup: {
+              from: "businessfeedlikes",
+              localField: "_id",
+              foreignField: "commentReplyId",
+              as: "isLiked",
+              pipeline: [
+                {
+                  $match: {
+                    likedBy: new mongoose.Types.ObjectId(req.user?._id),
+                  },
+                },
+              ],
+            },
+          },
+
+          {
+            $addFields: {
+              likes: { $size: "$likes" },
+              isLiked: {
+                $cond: {
+                  if: {
+                    $gte: [
+                      {
+                        $size: "$isLiked"
+                      },
+                      1,
+                    ]
+                  },
+                  then: true,
+                  else: false,
+                }
+              },
+            }
+          },
+
+
+
+          {
+            $sort: { createdAt: -1 }
+          }
+        ],
+
+        as: "replies"
+      }
+    },
+
+    {
+      $lookup: {
+        from: "socialprofiles",
+        localField: "author",
+        foreignField: "owner",
+        as: "author",
+        pipeline: [
+          {
+            $lookup: {
+              from: "users",
+              localField: "owner",
+              foreignField: "_id",
+              as: "account",
+              pipeline: [
+                {
+                  $project: {
+                    avatar: 1,
+                    email: 1,
+                    username: 1,
+                  },
+                },
+              ],
+            },
+          },
+          {
+            $project: {
+              firstName: 1,
+              lastName: 1,
+              account: 1,
+            },
+          },
+          {
+            $addFields: {
+              account: { $first: "$account" },
+            },
+          },
+        ],
+      },
+    },
+    {
+      $addFields: {
+        author: { $first: "$author" },
+        likes: { $size: "$likes" },
+        isLiked: {
+          $cond: {
+            if: {
+              $gte: [
+                {
+                  // if the isLiked key has document in it
+                  $size: "$isLiked",
+                },
+                1,
+              ],
+            },
+            then: true,
+            else: false,
+          },
+        },
+        replyCount: { $size: "$replies" },
+      },
+
+      // $addFields: {
+      //   replyCount: { $size: "$replies" },
+      // },
+    },
+
+    {
+      $sort: { createdAt: -1 }
+    }
+  ]);
+  // console.log("Aggregation Pipeline: ", JSON.stringify(commentAggregation));
+
+  const comments = await SocialComment.aggregatePaginate(
+    commentAggregation,
+    getMongoosePaginationOptions({
+      page,
+      limit,
+      customLabels: {
+        totalDocs: "totalComments",
+        docs: "comments",
+      },
+    })
+  );
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, comments, "Post comments fetched successfully"));
+});
+
+const deleteComment = asyncHandler(async (req, res) => {
+  const { commentId } = req.params;
+  const deletedComment = await SocialComment.findOneAndDelete({
+    _id: new mongoose.Types.ObjectId(commentId),
+    author: req.user?._id,
+  });
+
+  if (!deletedComment) {
+    throw new ApiError(
+      404,
+      "Comment is already deleted or you are not authorized for this action."
+    );
+  }
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, { deletedComment }, "Comment deleted successfully")
+    );
+});
