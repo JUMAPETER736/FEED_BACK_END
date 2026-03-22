@@ -378,3 +378,19 @@ onst addComment = asyncHandler(async (req, res) => {
   } else {
     console.log(`files not present`);
     console.log(`postid ${postId}, content ${content}`);
+
+    const comment = await SocialComment.create({
+      content,
+      contentType,
+      localUpdateId: localUpdateId,
+      author: req.user?._id,
+      postId,
+      gifs: gif,
+    });
+
+
+    return res
+      .status(201)
+      .json(new ApiResponse(201, comment, "Comment added successfully"));
+  }
+});
