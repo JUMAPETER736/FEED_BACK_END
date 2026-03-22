@@ -200,3 +200,80 @@ const unifiedNotificationCommonAggregation = () => {
     },
   ];
 };
+
+
+onst addComment = asyncHandler(async (req, res) => {
+  const { postId } = req.params;
+
+  const {
+    content,
+    contentType,
+    localUpdateId,
+    duration,
+    fileName,
+    fileType,
+    fileSize,
+    numberOfPages,
+    gif,
+  } = req.body;
+
+  const isPostAvailable = await SocialPost.findById(postId);
+  if (!isPostAvailable) {
+    return res.status(404).json({
+      success: false,
+      message: "Social Post not found",
+      data: {}
+    });
+  }
+
+
+  if (req.files) {
+    try {
+      const audios =
+        req.files.audio && req.files.audio.length
+          ? req.files.audio.map((aud) => {
+            const audioUrl = getStaticCommentAudioFilePath(req, aud.filename);
+            const audioLocalPath = getCommentAudioLocalPath(aud.filename);
+            return { url: audioUrl, localPath: audioLocalPath };
+          })
+          : [];
+
+      const images =
+        req.files.image && req.files.image.length
+          ? req.files.image.map((img) => {
+            const imageUrl = getStaticCommentImageFilePath(req, img.filename);
+            const imageLocalPath = getCommentImageLocalPath(img.filename);
+            return { url: imageUrl, localPath: imageLocalPath };
+          })
+          : [];
+      const videos =
+        req.files.video && req.files.video.length
+          ? req.files.video.map((vid) => {
+            const videoUrl = getStaticCommentVideoFilePath(req, vid.filename);
+            const videoLocalPath = getCommentVideoLocalPath(vid.filename);
+            return { url: videoUrl, localPath: videoLocalPath };
+          })
+          : [];
+
+      const thumbnails =
+        req.files.thumbnail && req.files.thumbnail.length
+          ? req.files.thumbnail.map((tn) => {
+            const thumbnailUrl = getStaticCommentThumbnailFilePath(
+              req,
+              tn.filename
+            );
+            const thumbnailLocalPath = getCommentThumbnailLocalPath(
+              tn.filename
+            );
+            return { url: thumbnailUrl, localPath: thumbnailLocalPath };
+          })
+          : [];
+
+      const docs =
+        req.files.docs && req.files.docs.length
+          ? req.files.docs.map((doc) => {
+            const docUrl = getStaticCommentDocsFilePath(req, doc.filename);
+            const docLocalPath = getCommentDocsLocalPath(doc.filename);
+            return { url: docUrl, localPath: docLocalPath };
+          })
+          : [];
