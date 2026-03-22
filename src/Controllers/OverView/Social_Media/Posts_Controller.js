@@ -977,3 +977,55 @@ const getRepostedShorts = asyncHandler(async (req, res) => {
 
   return res.status(200).json(new ApiResponse(200, posts, "Reposted shorts fetched successfully"));
 });
+
+
+
+const getDownloadedShorts = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10 } = req.query;
+
+  const aggregation = SocialPost.aggregate([
+    {
+      $match: {
+        ...SHORTS_MATCH,
+        $or: [
+          { downloads: { $exists: true, $gt: 0 } },
+          { downloadCount: { $exists: true, $gt: 0 } },
+        ],
+      },
+    },
+    { $sort: { createdAt: -1 } },
+    ...postCommonAggregation(req),
+  ]);
+
+  const posts = await SocialPost.aggregatePaginate(
+    aggregation,
+    getMongoosePaginationOptions({ page, limit, customLabels: { totalDocs: "totalDownloadedShorts", docs: "downloadedShorts" } })
+  );
+
+  return res.status(200).json(new ApiResponse(200, posts, "Downloaded shorts fetched successfully"));
+});
+
+
+export {
+  createPost,
+  deletePost,
+  getAllPosts,
+  searchAllPosts,
+  getBookMarkedPosts,
+  getMyPosts,
+  getPostById,
+  getPostsByUsername,
+  removePostImage,
+  updatePost,
+  getPostsByTag,
+  getPostByFileId,
+  getAllShortsByFeedShortBusinessId,
+  getSearchAllPostsByUserId,
+  postCommonAggregation,
+  getLikedPosts,
+  getCommentedShorts,
+  getSharedShorts,
+  getRepostedShorts,
+  getDownloadedShorts,
+
+};
