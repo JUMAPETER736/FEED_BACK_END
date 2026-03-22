@@ -662,3 +662,31 @@ const deleteComment = asyncHandler(async (req, res) => {
       new ApiResponse(200, { deletedComment }, "Comment deleted successfully")
     );
 });
+
+
+const updateComment = asyncHandler(async (req, res) => {
+  const { commentId } = req.params;
+  const { content } = req.body;
+
+  const updatedComment = await SocialComment.findOneAndUpdate(
+    {
+      _id: new mongoose.Types.ObjectId(commentId),
+      author: req.user?._id,
+    },
+    {
+      $set: { content },
+    },
+    { new: true }
+  );
+
+  if (!updatedComment) {
+    throw new ApiError(
+      404,
+      "Comment does not exist or you are not authorized for this action."
+    );
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, updatedComment, "Comment updated successfully"));
+});
