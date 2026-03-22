@@ -840,3 +840,31 @@ const getSearchAllPostsByUserId = asyncHandler(async (req, res) => {
 
   return res.status(200).json(new ApiResponse(200, { posts, followList }, "Shorts fetched successfully"));
 });
+
+
+const getBookMarkedPosts = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10 } = req.query;
+
+  const bookmarkedPostIds = await SocialBookmark.find({ bookmarkedBy: req.user._id }).distinct("postId");
+
+  if (!bookmarkedPostIds.length) {
+    return res.status(200).json(
+      new ApiResponse(200, { totalBookmarkedShorts: 0, bookmarkedShorts: [], page: Number(page), limit: Number(limit), totalPages: 0, hasPrevPage: false, hasNextPage: false, prevPage: null, nextPage: null }, "No bookmarked shorts found")
+    );
+  }
+
+  const objectIds = toObjectIds(bookmarkedPostIds);
+
+  const postAggregation = SocialPost.aggregate([
+    { $match: { _id: { $in: objectIds }, ...SHORTS_MATCH } },
+    { $sort: { createdAt: -1 } },
+    ...postCommonAggregation(req),
+  ]);
+
+  const posts = await SocialPost.aggregatePaginate(
+    postAggregation,
+    getMongoosePaginationOptions({ page, limit, customLabels: { totalDocs: "totalBookmarkedShorts", docs: "bookmarkedShorts" } })
+  );
+
+  return res.status(200).json(new ApiResponse(200, posts, "Bookmarked shorts fetched successfully"));
+});
