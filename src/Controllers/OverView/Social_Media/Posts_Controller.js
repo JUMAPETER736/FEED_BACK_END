@@ -791,3 +791,52 @@ const searchAllPosts = asyncHandler(async (req, res) => {
 
   return res.status(200).json(new ApiResponse(200, { posts, followList, searchQuery: query, userId }, "Shorts searched successfully"));
 });
+
+
+
+const getSearchAllPostsByUserId = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  const { page = 1, limit = 10 } = req.query;
+
+  if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+    return res.status(400).json(new ApiResponse(400, {}, "Invalid user ID format"));
+  }
+
+  const targetUser = await User.findById(userId);
+  if (!targetUser) {
+    return res.status(200).json(new ApiResponse(200, { posts: { shorts: [], totalShorts: 0, limit: parseInt(limit), page: parseInt(page), totalPages: 0 }, followList: [] }, `User with ID '${userId}' not found`));
+  }
+
+  const targetSocialProfile = await SocialProfile.findOne({ owner: targetUser._id });
+  if (!targetSocialProfile) {
+    return res.status(200).json(new ApiResponse(200, { posts: { shorts: [], totalShorts: 0, limit: parseInt(limit), page: parseInt(page), totalPages: 0 }, followList: [] }, "No profile found for this user"));
+  }
+
+  const postAggregation = SocialPost.aggregate([
+    { $match: { author: targetSocialProfile._id, ...SHORTS_MATCH } },
+    ...postCommonAggregation(req),
+  ]);
+
+  const posts = await SocialPost.aggregatePaginate(
+    postAggregation,
+    getMongoosePaginationOptions({ page, limit, customLabels: { totalDocs: "totalShorts", docs: "shorts" } })
+  );
+
+  const ownerIDs = posts.shorts.map((post) => post.author?.account?._id).filter(Boolean);
+  const followList = [];
+
+  if (req.user && ownerIDs.length > 0) {
+    try {
+      await Promise.all(
+        ownerIDs.map(async (followersId) => {
+          const followInstance = await SocialFollow.findOne({ followerId: req.user._id, followeeId: followersId });
+          followList.push({ followersId, isFollowing: !!followInstance });
+        })
+      );
+    } catch (error) {
+      console.error("Error checking follow status:", error);
+    }
+  }
+
+  return res.status(200).json(new ApiResponse(200, { posts, followList }, "Shorts fetched successfully"));
+});
