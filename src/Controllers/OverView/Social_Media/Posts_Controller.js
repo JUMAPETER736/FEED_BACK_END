@@ -645,3 +645,45 @@ const getPostsByUsername = asyncHandler(async (req, res) => {
 
   return res.status(200).json(new ApiResponse(200, posts, "User's shorts fetched successfully"));
 });
+
+
+const getMyPosts = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10 } = req.query;
+
+  const postAggregation = SocialPost.aggregate([
+    { $match: { author: new mongoose.Types.ObjectId(req.user?._id), ...SHORTS_MATCH } },
+    { $sort: { createdAt: -1 } },
+    ...postCommonAggregation(req),
+  ]);
+
+  const posts = await SocialPost.aggregatePaginate(
+    postAggregation,
+    getMongoosePaginationOptions({
+      page,
+      limit,
+      customLabels: { totalDocs: "totalShorts", docs: "shorts" },
+    })
+  );
+
+  return res.status(200).json(new ApiResponse(200, posts, "My shorts fetched successfully"));
+});
+
+const getPostByFileId = asyncHandler(async (req, res) => {
+  const { fileId } = req.params;
+
+  try {
+    const posts = await SocialPost.aggregate([
+      { $match: { fileId } },
+      ...postCommonAggregation(req),
+    ]);
+
+    if (posts.length === 0) {
+      return res.status(404).json({ message: "No shorts found for this fileId" });
+    }
+
+    res.status(200).json(posts);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "An error occurred while retrieving shorts" });
+  }
+});
