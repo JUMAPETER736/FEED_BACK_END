@@ -607,3 +607,41 @@ const getAllShortsByFeedShortBusinessId = asyncHandler(async (req, res) => {
 
   return res.status(200).json(new ApiResponse(200, { posts }, "Shorts fetched successfully"));
 });
+
+const getPostById = asyncHandler(async (req, res) => {
+  const { postId } = req.params;
+
+  const post = await SocialPost.aggregate([
+    { $match: { _id: new mongoose.Types.ObjectId(postId) } },
+    ...postCommonAggregation(req),
+  ]);
+
+  if (!post[0]) throw new ApiError(404, "Short does not exist");
+
+  return res.status(200).json(new ApiResponse(200, post[0], "Short fetched successfully"));
+});
+
+const getPostsByUsername = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10 } = req.query;
+  const { username } = req.params;
+
+  const user = await User.findOne({ username: username.toLowerCase() });
+  if (!user) throw new ApiError(404, `User with username '${username}' does not exist`);
+
+  const postAggregation = SocialPost.aggregate([
+    { $match: { author: new mongoose.Types.ObjectId(user._id), ...SHORTS_MATCH } },
+    { $sort: { createdAt: -1 } },
+    ...postCommonAggregation(req),
+  ]);
+
+  const posts = await SocialPost.aggregatePaginate(
+    postAggregation,
+    getMongoosePaginationOptions({
+      page,
+      limit,
+      customLabels: { totalDocs: "totalShorts", docs: "shorts" },
+    })
+  );
+
+  return res.status(200).json(new ApiResponse(200, posts, "User's shorts fetched successfully"));
+});
