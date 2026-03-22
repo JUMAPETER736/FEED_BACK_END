@@ -369,3 +369,12 @@ onst addComment = asyncHandler(async (req, res) => {
 
         emitUnreadCountUpdate(req, String(receiverId));
       }
+       return res
+        .status(201)
+        .json(new ApiResponse(201, comment, "Comment added successfully"));
+    } catch (error) {
+      console.log(`error ${error}`);
+    }
+  } else {
+    console.log(`files not present`);
+    console.log(`postid ${postId}, content ${content}`);
