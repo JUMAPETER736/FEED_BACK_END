@@ -868,3 +868,30 @@ const getBookMarkedPosts = asyncHandler(async (req, res) => {
 
   return res.status(200).json(new ApiResponse(200, posts, "Bookmarked shorts fetched successfully"));
 });
+
+
+
+const getLikedPosts = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10 } = req.query;
+
+  const likedPostIds = await SocialLike.distinct("postId", { postId: { $ne: null } });
+
+  if (!likedPostIds.length) {
+    return res.status(200).json(
+      new ApiResponse(200, { totalLikedShorts: 0, likedShorts: [], page: Number(page), totalPages: 0 }, "No liked shorts found")
+    );
+  }
+
+  const aggregation = SocialPost.aggregate([
+    { $match: { _id: { $in: likedPostIds }, ...SHORTS_MATCH } },
+    { $sort: { createdAt: -1 } },
+    ...postCommonAggregation(req),
+  ]);
+
+  const posts = await SocialPost.aggregatePaginate(
+    aggregation,
+    getMongoosePaginationOptions({ page, limit, customLabels: { totalDocs: "totalLikedShorts", docs: "likedShorts" } })
+  );
+
+  return res.status(200).json(new ApiResponse(200, { totalLikedShorts: likedPostIds.length, ...posts }, "Liked shorts fetched successfully"));
+});
