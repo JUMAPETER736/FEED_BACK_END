@@ -202,7 +202,7 @@ const unifiedNotificationCommonAggregation = () => {
 };
 
 
-onst addComment = asyncHandler(async (req, res) => {
+const addComment = asyncHandler(async (req, res) => {
   const { postId } = req.params;
 
   const {
@@ -277,7 +277,8 @@ onst addComment = asyncHandler(async (req, res) => {
             return { url: docUrl, localPath: docLocalPath };
           })
           : [];
- const comment = await SocialComment.create({
+
+      const comment = await SocialComment.create({
         content,
         contentType,
         localUpdateId: localUpdateId,
@@ -323,7 +324,8 @@ onst addComment = asyncHandler(async (req, res) => {
         console.log(
           `Creating notification for user: ${user.username} with ID: ${receiverId}`
         );
-     // Follow Notification
+
+        // Follow Notification
         await UnifiedNotification.create({
           owner: receiverId,
           sender: req.user._id,
@@ -369,7 +371,8 @@ onst addComment = asyncHandler(async (req, res) => {
 
         emitUnreadCountUpdate(req, String(receiverId));
       }
-       return res
+
+      return res
         .status(201)
         .json(new ApiResponse(201, comment, "Comment added successfully"));
     } catch (error) {
