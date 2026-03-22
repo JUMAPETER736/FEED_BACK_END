@@ -41,3 +41,39 @@ import UnifiedNotification from "../../../models/apps/notifications/unified.noti
  * @description Utility function which returns the pipeline stages to structure the social post schema with calculations like, likes count, comments count, isLiked, isBookmarked etc
  * @returns {mongoose.PipelineStage[]}
  */
+
+
+
+const postCommonAggregation = (req) => {
+  return [
+    {
+      $lookup: {
+        from: "socialcomments",
+        localField: "_id",
+        foreignField: "postId",
+        as: "comments",
+      },
+    },
+    {
+      $lookup: {
+        from: "sociallikes",
+        localField: "_id",
+        foreignField: "postId",
+        as: "likes",
+      },
+    },
+    {
+      $lookup: {
+        from: "sociallikes",
+        localField: "_id",
+        foreignField: "postId",
+        as: "isLiked",
+        pipeline: [
+          {
+            $match: {
+              likedBy: new mongoose.Types.ObjectId(req.user?._id),
+            },
+          },
+        ],
+      },
+    },
