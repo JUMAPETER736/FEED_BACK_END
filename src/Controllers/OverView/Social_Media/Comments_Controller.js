@@ -77,3 +77,51 @@ const postCommonAggregation = (req) => {
         ],
       },
     },
+     {
+      $lookup: {
+        from: "socialbookmarks",
+        localField: "_id",
+        foreignField: "postId",
+        as: "isBookmarked",
+        pipeline: [
+          {
+            $match: {
+              bookmarkedBy: new mongoose.Types.ObjectId(req.user?._id),
+            },
+          },
+        ],
+      },
+    },
+    {
+      $lookup: {
+        from: "socialprofiles",
+        localField: "author",
+        foreignField: "owner",
+        as: "author",
+        pipeline: [
+          {
+            $lookup: {
+              from: "users",
+              localField: "owner",
+              foreignField: "_id",
+              as: "account",
+              pipeline: [
+                {
+                  $project: {
+                    avatar: 1,
+                    email: 1,
+                    username: 1,
+                    _id: 1,
+                  },
+                },
+              ],
+            },
+          },
+          {
+            $addFields: {
+              account: { $first: "$account" },
+            },
+          },
+        ],
+      },
+    },
