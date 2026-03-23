@@ -1005,7 +1005,9 @@ const locateComment = asyncHandler(async (req, res) => {
           message: "Parent comment not found"
         });
       }
-  const commentsBeforeParent = await SocialComment.countDocuments({
+
+
+      const commentsBeforeParent = await SocialComment.countDocuments({
         postId: new mongoose.Types.ObjectId(postId),
         createdAt: { $gt: parentComment.createdAt }
       });
@@ -1139,7 +1141,8 @@ const locateComment = asyncHandler(async (req, res) => {
                 ],
               },
             },
-              {
+
+            {
               $addFields: {
                 likes: { $size: "$likes" },
                 isLiked: {
@@ -1209,8 +1212,8 @@ const locateComment = asyncHandler(async (req, res) => {
           ],
         },
       },
-
-         $addFields: {
+      {
+        $addFields: {
           author: { $first: "$author" },
           likes: { $size: "$likes" },
           isLiked: {
@@ -1271,3 +1274,25 @@ const locateComment = asyncHandler(async (req, res) => {
       },
       message: "Comment located successfully"
     });
+
+
+  } catch (error) {
+    console.log("Something went wrong", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to locate comment",
+      error: error.message
+    });
+  }
+
+});
+
+export {
+  addComment,
+  getPostComments,
+  deleteComment,
+  updateComment,
+  getOneComment,
+  locateComment
+  // getPostComments
+};
