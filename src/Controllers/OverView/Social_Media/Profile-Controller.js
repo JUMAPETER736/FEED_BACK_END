@@ -293,3 +293,93 @@ const getUserFollowers = async (userId, req) => {
 
   return followers;
 };
+
+const getUserFollowing = async (userId, req) => {
+  const user = await User.findById(userId);
+
+  if (!user) {
+    throw new ApiError(404, "User does not exist");
+  }
+
+  // Get all users that this user is following with their complete profile details
+  const following = await SocialFollow.aggregate([
+    {
+      $match: {
+        followerId: new mongoose.Types.ObjectId(userId), // Find all who this user follows
+      },
+    },
+    {
+      $lookup: {
+        from: "socialprofiles",
+        localField: "followeeId",
+        foreignField: "owner",
+        as: "followingProfile",
+      },
+    },
+    {
+      $lookup: {
+        from: "users",
+        localField: "followeeId",
+        foreignField: "_id",
+        as: "followingAccount",
+      },
+    },
+    {
+      $addFields: {
+        followingProfile: { $first: "$followingProfile" },
+        followingAccount: { $first: "$followingAccount" },
+      },
+    },
+    {
+      $lookup: {
+        from: "socialfollows",
+        let: { followeeId: "$followeeId" },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$followerId", "$$followeeId"] },
+                  { $eq: ["$followeeId", new mongoose.Types.ObjectId(req.user?._id)] },
+                ],
+              },
+            },
+          },
+        ],
+        as: "followsBack",
+      },
+    },
+    {
+      $project: {
+        _id: "$followingAccount._id",
+        username: "$followingAccount.username",
+        email: "$followingAccount.email",
+        avatar: "$followingAccount.avatar",
+        isEmailVerified: "$followingAccount.isEmailVerified",
+        firstName: "$followingProfile.firstName",
+        lastName: "$followingProfile.lastName",
+        fullName: {
+          $trim: {
+            input: {
+              $concat: [
+                { $ifNull: ["$followingProfile.firstName", ""] },
+                " ",
+                { $ifNull: ["$followingProfile.lastName", ""] }
+              ]
+            }
+          }
+        },
+        bio: "$followingProfile.bio",
+        dob: "$followingProfile.dob",
+        location: "$followingProfile.location",
+        countryCode: "$followingProfile.countryCode",
+        phoneNumber: "$followingProfile.phoneNumber",
+        coverImage: "$followingProfile.coverImage",
+        followsBack: { $gt: [{ $size: "$followsBack" }, 0] },
+        followedAt: "$createdAt",
+      },
+    },
+  ]);
+
+  return following;
+};
