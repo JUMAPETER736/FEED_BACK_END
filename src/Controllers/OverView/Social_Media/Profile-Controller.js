@@ -383,3 +383,53 @@ const getUserFollowing = async (userId, req) => {
 
   return following;
 };
+
+
+
+// Controller functions to use these utilities
+const getFollowersList = asyncHandler(async (req, res) => {
+  const { username } = req.params;
+
+  const user = await User.findOne({ username });
+
+  if (!user) {
+    throw new ApiError(404, "User does not exist");
+  }
+
+  const followers = await getUserFollowers(user._id, req);
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, followers, "User followers fetched successfully")
+    );
+});
+
+const getFollowingList = asyncHandler(async (req, res) => {
+  const { username } = req.params;
+
+  const user = await User.findOne({ username });
+
+  if (!user) {
+    throw new ApiError(404, "User does not exist");
+  }
+
+  const following = await getUserFollowing(user._id, req);
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, following, "User following list fetched successfully")
+    );
+});
+
+export {
+  getMySocialProfile,
+  getProfileByUserName,
+  updateSocialProfile,
+  updateCoverImage,
+  getUserFollowers,
+  getUserFollowing,
+  getFollowersList,
+  getFollowingList,
+};
