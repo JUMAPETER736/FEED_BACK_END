@@ -200,3 +200,96 @@ const updateCoverImage = asyncHandler(async (req, res) => {
       new ApiResponse(200, updatedProfile, "Cover image updated successfully")
     );
 });
+
+
+
+const getUserFollowers = async (userId, req) => {
+
+  const user = await User.findById(userId);
+
+  if (!user) {
+    throw new ApiError(404, "User does not exist");
+  }
+
+  // Get all followers with their complete profile details
+  const followers = await SocialFollow.aggregate([
+    {
+      $match: {
+        followeeId: new mongoose.Types.ObjectId(userId), // Find all who follow this user
+      },
+    },
+    {
+      $lookup: {
+        from: "socialprofiles",
+        localField: "followerId",
+        foreignField: "owner",
+        as: "followerProfile",
+      },
+    },
+    {
+      $lookup: {
+        from: "users",
+        localField: "followerId",
+        foreignField: "_id",
+        as: "followerAccount",
+      },
+    },
+    {
+      $addFields: {
+        followerProfile: { $first: "$followerProfile" },
+        followerAccount: { $first: "$followerAccount" },
+      },
+    },
+    {
+      $lookup: {
+        from: "socialfollows",
+        let: { followerId: "$followerId" },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$followerId", "$$followerId"] },
+                  { $eq: ["$followeeId", new mongoose.Types.ObjectId(req.user?._id)] },
+                ],
+              },
+            },
+          },
+        ],
+        as: "isFollowingBack",
+      },
+    },
+    {
+      $project: {
+        _id: "$followerAccount._id",
+        username: "$followerAccount.username",
+        email: "$followerAccount.email",
+        avatar: "$followerAccount.avatar",
+        isEmailVerified: "$followerAccount.isEmailVerified",
+        firstName: "$followerProfile.firstName",
+        lastName: "$followerProfile.lastName",
+        fullName: {
+          $trim: {
+            input: {
+              $concat: [
+                { $ifNull: ["$followerProfile.firstName", ""] },
+                " ",
+                { $ifNull: ["$followerProfile.lastName", ""] }
+              ]
+            }
+          }
+        },
+        bio: "$followerProfile.bio",
+        dob: "$followerProfile.dob",
+        location: "$followerProfile.location",
+        countryCode: "$followerProfile.countryCode",
+        phoneNumber: "$followerProfile.phoneNumber",
+        coverImage: "$followerProfile.coverImage",
+        isFollowingBack: { $gt: [{ $size: "$isFollowingBack" }, 0] },
+        followedAt: "$createdAt",
+      },
+    },
+  ]);
+
+  return followers;
+};
