@@ -66,3 +66,49 @@ const toggleRepost = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, { isReposted: true }, "Post reposted successfully"));
 });
+
+
+
+const getMyRepostedShorts = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10 } = req.query;
+
+  const { postCommonAggregation } = await import("./post.controllers.js");
+
+  // ✅ Get ALL reposted postIds from everyone in the system
+  const repostedPostIds = await SocialRepost.distinct("postId");
+
+  if (!repostedPostIds.length) {
+    return res.status(200).json(
+      new ApiResponse(200, { totalRepostedShorts: 0, repostedShorts: [], page: Number(page), totalPages: 0 }, "No reposted shorts found")
+    );
+  }
+
+  const objectIds = repostedPostIds
+    .map((id) => {
+      try {
+        return new mongoose.Types.ObjectId(id.toString());
+      } catch {
+        return null;
+      }
+    })
+    .filter(Boolean);
+
+  const postAggregation = SocialPost.aggregate([
+    { $match: { _id: { $in: objectIds } } },
+    { $sort: { createdAt: -1 } },
+    ...postCommonAggregation(req),
+  ]);
+
+  const posts = await SocialPost.aggregatePaginate(
+    postAggregation,
+    getMongoosePaginationOptions({
+      page,
+      limit,
+      customLabels: { totalDocs: "totalRepostedShorts", docs: "repostedShorts" },
+    })
+  );
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, posts, "Reposted shorts fetched successfully"));
+});
