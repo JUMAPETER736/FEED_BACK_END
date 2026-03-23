@@ -173,3 +173,65 @@ const getFollowersListByUserName = asyncHandler(async (req, res) => {
       )
     );
 });
+
+
+const getFollowingListByUserName = asyncHandler(async (req, res) => {
+  const { username } = req.params;
+  const { page = 1, limit = 10 } = req.query;
+
+  const userAggregation = await User.aggregate([
+    {
+      $match: {
+        username: username.toLowerCase(),
+      },
+    },
+    ...unifiedFollowingListAggregation(),
+  ]);
+
+  const user = userAggregation[0];
+
+  if (!user) {
+    throw new ApiError(404, "User does not exist");
+  }
+
+  const userId = user._id;
+  const followingAggregate = SocialFollow.aggregate([
+    {
+      $match: {
+        // When we are fetching the following list we want to match the follow documents with follower as current user
+        // Meaning, current user is FOLLOWING someone
+        followerId: new mongoose.Types.ObjectId(userId),
+      },
+    },
+    // Now we have all the follow documents where current user is a follower (who is following someone)
+    ...unifiedFollowingAggregation(req),
+  ]);
+
+  const followingList = await SocialFollow.aggregatePaginate(
+    followingAggregate,
+    getMongoosePaginationOptions({
+      page,
+      limit,
+      customLabels: {
+        totalDocs: "totalFollowing",
+        docs: "following",
+      },
+    })
+  );
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        { user, ...followingList },
+        "Following list fetched successfully"
+      )
+    );
+});
+
+export {
+  followUnFollowUser,
+  getFollowersListByUserName,
+  getFollowingListByUserName,
+};
