@@ -1005,3 +1005,137 @@ const locateComment = asyncHandler(async (req, res) => {
           message: "Parent comment not found"
         });
       }
+  const commentsBeforeParent = await SocialComment.countDocuments({
+        postId: new mongoose.Types.ObjectId(postId),
+        createdAt: { $gt: parentComment.createdAt }
+      });
+
+      parentPageNumber = Math.floor(commentsBeforeParent / limit) + 1;
+
+      // Find position of reply within parent's replies
+      const repliesBeforeTarget = await SocialCommentReply.countDocuments({
+        commentId: parentCommentId,
+        createdAt: { $gt: reply.createdAt }
+      });
+
+      positionInPage = repliesBeforeTarget;
+    }
+
+    const commentAggregation = SocialComment.aggregate([
+      {
+        $match: {
+          postId: new mongoose.Types.ObjectId(postId),
+        },
+      },
+
+      {
+        $lookup: {
+          from: "sociallikes",
+          localField: "_id",
+          foreignField: "commentId",
+          as: "likes",
+        },
+      },
+      {
+        $lookup: {
+          from: "sociallikes",
+          localField: "_id",
+          foreignField: "commentId",
+          as: "isLiked",
+          pipeline: [
+            {
+              $match: {
+                likedBy: new mongoose.Types.ObjectId(req.user?._id),
+              },
+            },
+          ],
+        },
+      },
+
+
+      //get all replies associate with the comment
+      {
+        $lookup: {
+          from: "socialcommentreplies",
+          let: { commentId: "$_id" },  // Define variable from parent document
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $eq: ["$commentId", "$$commentId"]  // Match using the variable
+                }
+              }
+            },
+            {
+              $lookup: {
+                from: "socialprofiles",
+                localField: "author",
+                foreignField: "owner",
+                as: "author",
+                pipeline: [
+                  {
+                    $lookup: {
+                      from: "users",
+                      localField: "owner",
+                      foreignField: "_id",
+                      as: "account",
+                      pipeline: [
+                        {
+                          $project: {
+                            avatar: 1,
+                            username: 1,
+                            email: 1
+                          }
+                        }
+                      ],
+                    },
+                  },
+
+                  {
+                    $project: {
+                      firstName: 1,
+                      lastName: 1,
+                      account: 1,
+                    }
+                  },
+
+                  {
+                    $addFields: {
+                      account: { $first: "$account" }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              $unwind: {
+                path: "$author",
+                preserveNullAndEmptyArrays: true
+              }
+            },
+
+
+            {
+              $lookup: {
+                from: "businessfeedlikes",
+                localField: "_id",
+                foreignField: "commentReplyId",
+                as: "likes"
+              }
+            },
+
+            {
+              $lookup: {
+                from: "businessfeedlikes",
+                localField: "_id",
+                foreignField: "commentReplyId",
+                as: "isLiked",
+                pipeline: [
+                  {
+                    $match: {
+                      likedBy: new mongoose.Types.ObjectId(req.user?._id),
+                    },
+                  },
+                ],
+              },
+            },
