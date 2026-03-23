@@ -100,3 +100,32 @@ const getUserSocialProfile = async (userId, req) => {
   }
   return { ...userProfile, isFollowing };
 };
+
+
+
+
+// Public route
+const getProfileByUserName = asyncHandler(async (req, res) => {
+  const { username } = req.params;
+
+  const user = await User.findOne({ username });
+
+  if (!user) {
+    throw new ApiError(404, "User does not exist");
+  }
+
+  const userProfile = await getUserSocialProfile(user._id, req);
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, userProfile, "User profile fetched successfully")
+    );
+});
+
+const getMySocialProfile = asyncHandler(async (req, res) => {
+  let profile = await getUserSocialProfile(req.user._id, req);
+  return res
+    .status(200)
+    .json(new ApiResponse(200, profile, "User profile fetched successfully"));
+});
