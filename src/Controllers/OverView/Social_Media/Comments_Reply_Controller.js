@@ -517,3 +517,25 @@ const getCommentsReply = asyncHandler(async (req, res) => {
       new ApiResponse(200, comments, "Comment replies fetched successfully")
     );
 });
+
+
+const deleteCommentReply = asyncHandler(async (req, res) => {
+  const { commentReplyId } = req.params;
+  const deletedComment = await SocialCommentReply.findOneAndDelete({
+    _id: new mongoose.Types.ObjectId(commentReplyId),
+    author: req.user?._id,
+  });
+
+  if (!deletedComment) {
+    throw new ApiError(
+      404,
+      "Comment is already deleted or you are not authorized for this action."
+    );
+  }
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, { deletedComment }, "Comment deleted successfully")
+    );
+});
