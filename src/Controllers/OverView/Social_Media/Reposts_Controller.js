@@ -112,3 +112,20 @@ const getMyRepostedShorts = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, posts, "Reposted shorts fetched successfully"));
 });
+
+
+const getRepostsForPost = asyncHandler(async (req, res) => {
+  const { postId } = req.params;
+
+  const post = await SocialPost.findById(postId);
+  if (!post) throw new ApiError(404, "Post does not exist");
+
+  const repostCount = await SocialRepost.countDocuments({ postId });
+  const isReposted = !!(await SocialRepost.findOne({ postId, repostedBy: req.user._id }));
+
+  return res.status(200).json(
+    new ApiResponse(200, { postId, repostCount, isReposted }, "Repost data fetched successfully")
+  );
+});
+
+export { toggleRepost, getMyRepostedShorts, getRepostsForPost };
