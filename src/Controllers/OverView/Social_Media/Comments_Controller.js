@@ -1139,3 +1139,73 @@ const locateComment = asyncHandler(async (req, res) => {
                 ],
               },
             },
+              {
+              $addFields: {
+                likes: { $size: "$likes" },
+                isLiked: {
+                  $cond: {
+                    if: {
+                      $gte: [
+                        {
+                          $size: "$isLiked"
+                        },
+                        1,
+                      ]
+                    },
+                    then: true,
+                    else: false,
+                  }
+                },
+              }
+            },
+
+
+
+            {
+              $sort: { createdAt: -1 }
+            }
+          ],
+
+          as: "replies"
+        }
+      },
+
+      {
+        $lookup: {
+          from: "socialprofiles",
+          localField: "author",
+          foreignField: "owner",
+          as: "author",
+          pipeline: [
+            {
+              $lookup: {
+                from: "users",
+                localField: "owner",
+                foreignField: "_id",
+                as: "account",
+                pipeline: [
+                  {
+                    $project: {
+                      avatar: 1,
+                      email: 1,
+                      username: 1,
+                    },
+                  },
+                ],
+              },
+            },
+            {
+              $project: {
+                firstName: 1,
+                lastName: 1,
+                account: 1,
+              },
+            },
+            {
+              $addFields: {
+                account: { $first: "$account" },
+              },
+            },
+          ],
+        },
+      },
