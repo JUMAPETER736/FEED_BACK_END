@@ -690,3 +690,107 @@ const updateComment = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, updatedComment, "Comment updated successfully"));
 });
+
+
+
+const getOneComment = asyncHandler(async (req, res) => {
+  const { commentId } = req.params;
+  const { limit = 10 } = req.query;
+
+  // Validate commentId format
+  if (!mongoose.Types.ObjectId.isValid(commentId)) {
+    throw new ApiError(400, "Invalid comment ID format");
+  }
+
+  // Fetch the comment with aggregations
+  const comment = await SocialComment.aggregate([
+    {
+      $match: {
+        _id: new mongoose.Types.ObjectId(commentId),
+      },
+    },
+    {
+      $lookup: {
+        from: "sociallikes",
+        localField: "_id",
+        foreignField: "commentId",
+        as: "likes",
+      },
+    },
+    {
+      $lookup: {
+        from: "sociallikes",
+        localField: "_id",
+        foreignField: "commentId",
+        as: "isLiked",
+        pipeline: [
+          {
+            $match: {
+              likedBy: new mongoose.Types.ObjectId(req.user?._id),
+            },
+          },
+        ],
+      },
+    },
+    {
+      $lookup: {
+        from: "socialcommentreplies",
+        localField: "_id",
+        foreignField: "commentId",
+        as: "replies",
+      },
+    },
+    {
+      $lookup: {
+        from: "socialprofiles",
+        localField: "author",
+        foreignField: "owner",
+        as: "author",
+        pipeline: [
+          {
+            $lookup: {
+              from: "users",
+              localField: "owner",
+              foreignField: "_id",
+              as: "account",
+              pipeline: [
+                {
+                  $project: {
+                    avatar: 1,
+                    email: 1,
+                    username: 1,
+                  },
+                },
+              ],
+            },
+          },
+          {
+            $project: {
+              firstName: 1,
+              lastName: 1,
+              account: 1,
+            },
+          },
+          {
+            $addFields: {
+              account: { $first: "$account" },
+            },
+          },
+        ],
+      },
+    },
+    {
+      $addFields: {
+        author: { $first: "$author" },
+        likes: { $size: "$likes" },
+        isLiked: {
+          $cond: {
+            if: { $gte: [{ $size: "$isLiked" }, 1] },
+            then: true,
+            else: false,
+          },
+        },
+        replyCount: { $size: "$replies" },
+      },
+    },
+  ]);
