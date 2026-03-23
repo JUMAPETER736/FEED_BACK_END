@@ -940,3 +940,68 @@ const getOneComment = asyncHandler(async (req, res) => {
       )
     );
 });
+
+
+
+const locateComment = asyncHandler(async (req, res) => {
+
+  try {
+
+    const { postId, commentId, limit = 10 } = req.query;
+
+    if (!postId || !commentId) {
+      return res.status(400).json({
+        success: false,
+        message: "postId and commentId are required"
+      });
+    }
+
+    // First, check if the commentId is a top-level comment or a reply
+    const isTopLevelComment = await SocialComment.findOne({
+      _id: new mongoose.Types.ObjectId(commentId),
+      postId: new mongoose.Types.ObjectId(postId)
+    });
+
+    let pageNumber = 0;
+    let positionInPage = 0;
+    let parentCommentId = null;
+    let parentPageNumber = null;
+    let isReply = false;
+
+    if (isTopLevelComment) {
+      // It's a top-level comment - find which page it's on
+      const commentsBeforeTarget = await SocialComment.countDocuments({
+        postId: new mongoose.Types.ObjectId(postId),
+        createdAt: { $gt: isTopLevelComment.createdAt } // Comments are sorted by createdAt descending
+      });
+
+      pageNumber = Math.floor(commentsBeforeTarget / limit) + 1;
+      positionInPage = commentsBeforeTarget % limit;
+
+    } else {
+      // It's a reply - find the parent comment
+      const reply = await SocialCommentReply.findOne({
+        _id: new mongoose.Types.ObjectId(commentId)
+      });
+
+      if (!reply) {
+        return res.status(404).json({
+          success: false,
+          message: "Comment or reply not found"
+        });
+      }
+
+      isReply = true;
+      parentCommentId = reply.commentId;
+
+      // Find which page the parent comment is on
+      const parentComment = await SocialComment.findOne({
+        _id: parentCommentId
+      });
+
+      if (!parentComment) {
+        return res.status(404).json({
+          success: false,
+          message: "Parent comment not found"
+        });
+      }
