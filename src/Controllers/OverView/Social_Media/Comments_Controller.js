@@ -794,3 +794,149 @@ const getOneComment = asyncHandler(async (req, res) => {
       },
     },
   ]);
+
+  // If the comment doesn't exist, return a 404 error
+  if (!comment.length) {
+    throw new ApiError(404, "Comment not found");
+  }
+
+  // Extract postId from the fetched comment
+  const postId = comment[0].postId;
+
+  // Find the position of the comment within all comments of the same post
+  const allComments = await SocialComment.find({ postId })
+    .sort({ _id: 1 })
+    .select("_id");
+
+  const commentIndex = allComments.findIndex(
+    (comm) => comm._id.toString() === commentId
+  );
+
+  const pageSize = parseInt(limit, 10) || 10;
+  const pageNumber = Math.floor(commentIndex / pageSize) + 1;
+  const skip = (pageNumber - 1) * pageSize;
+
+  // Fetch comments for the calculated page number
+  const comments = await SocialComment.aggregate([
+    {
+      $match: {
+        postId: new mongoose.Types.ObjectId(postId),
+      },
+    },
+    {
+      $sort: { _id: 1 }, // Ensure comments are sorted
+    },
+    {
+      $lookup: {
+        from: "sociallikes",
+        localField: "_id",
+        foreignField: "commentId",
+        as: "likes",
+      },
+    },
+    {
+      $lookup: {
+        from: "sociallikes",
+        localField: "_id",
+        foreignField: "commentId",
+        as: "isLiked",
+        pipeline: [
+          {
+            $match: {
+              likedBy: new mongoose.Types.ObjectId(req.user?._id),
+            },
+          },
+        ],
+      },
+    },
+    {
+      $lookup: {
+        from: "socialcommentreplies",
+        localField: "_id",
+        foreignField: "commentId",
+        as: "replies",
+      },
+    },
+    {
+      $lookup: {
+        from: "socialprofiles",
+        localField: "author",
+        foreignField: "owner",
+        as: "author",
+        pipeline: [
+          {
+            $lookup: {
+              from: "users",
+              localField: "owner",
+              foreignField: "_id",
+              as: "account",
+              pipeline: [
+                {
+                  $project: {
+                    avatar: 1,
+                    email: 1,
+                    username: 1,
+                  },
+                },
+              ],
+            },
+          },
+          {
+            $project: {
+              firstName: 1,
+              lastName: 1,
+              account: 1,
+            },
+          },
+          {
+            $addFields: {
+              account: { $first: "$account" },
+            },
+          },
+        ],
+      },
+    },
+    {
+      $addFields: {
+        author: { $first: "$author" },
+        likes: { $size: "$likes" },
+        isLiked: {
+          $cond: {
+            if: { $gte: [{ $size: "$isLiked" }, 1] },
+            then: true,
+            else: false,
+          },
+        },
+        replyCount: { $size: "$replies" },
+      },
+    },
+    {
+      $skip: skip,
+    },
+    {
+      $limit: pageSize,
+    },
+  ]);
+
+  // Check if comments were found for the page
+  if (!comments.length) {
+    throw new ApiError(404, "No comments found on this page");
+  }
+
+  // Return the comment, page number, and comments on the page
+  const response = {
+    comment: comment[0],
+    pageNumber,
+    comments,
+  };
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        response,
+        "Comment and related page fetched successfully"
+      )
+    );
+});
