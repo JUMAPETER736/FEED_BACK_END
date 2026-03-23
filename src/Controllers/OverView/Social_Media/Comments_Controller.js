@@ -1209,3 +1209,65 @@ const locateComment = asyncHandler(async (req, res) => {
           ],
         },
       },
+
+         $addFields: {
+          author: { $first: "$author" },
+          likes: { $size: "$likes" },
+          isLiked: {
+            $cond: {
+              if: {
+                $gte: [
+                  {
+                    // if the isLiked key has document in it
+                    $size: "$isLiked",
+                  },
+                  1,
+                ],
+              },
+              then: true,
+              else: false,
+            },
+          },
+          replyCount: { $size: "$replies" },
+        },
+
+        // $addFields: {
+        //   replyCount: { $size: "$replies" },
+        // },
+      },
+
+      {
+        $sort: { createdAt: -1 }
+      }
+    ]);
+
+    const targetPage = isReply ? parentPageNumber : pageNumber;
+
+    const comments = await SocialComment.aggregatePaginate(
+      commentAggregation,
+      getMongoosePaginationOptions({
+        page: targetPage,
+        limit,
+        customLabels: {
+          totalDocs: "totalComments",
+          docs: "comments",
+        },
+      })
+    );
+
+    
+    return res.status(200).json({
+      success: true,
+      data: {
+        ...comments,
+        location: {
+          commentId,
+          pageNumber: targetPage,
+          positionInPage,
+          isReply,
+          parentCommentId,
+          parentPageNumber: isReply ? parentPageNumber : null,
+        }
+      },
+      message: "Comment located successfully"
+    });
