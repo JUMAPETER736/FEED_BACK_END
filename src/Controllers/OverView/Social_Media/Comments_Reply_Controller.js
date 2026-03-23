@@ -191,3 +191,208 @@ const unifiedNotificationCommonAggregation = () => {
     },
   ];
 };
+
+
+const addCommentReply = asyncHandler(async (req, res) => {
+  const { commentId } = req.params;
+  var isReplyForMainComment = false;
+  var mainComment = null;
+  var commentAuthor = null;
+
+  const isCommentToReplyToAvailable = await SocialCommentReply.findById(commentId);
+
+  if (isCommentToReplyToAvailable) {
+    isReplyForMainComment = false;
+    commentAuthor = isCommentToReplyToAvailable.author;
+  } else {
+    isReplyForMainComment = true;
+  }
+
+  const {
+    content,
+    contentType,
+    duration,
+    fileName,
+    fileType,
+    fileSize,
+    numberOfPages,
+    gifs,
+  } = req.body;
+
+  if (isReplyForMainComment) {
+    mainComment = await SocialComment.findById(commentId);
+    commentAuthor = mainComment.author;
+  } else {
+    mainComment = await SocialComment.findById(isCommentToReplyToAvailable.commentId);
+  }
+
+  const isCommentAvailable = mainComment;
+
+  if (!isCommentAvailable) {
+    return res.status(404).json({
+      success: false,
+      message: "Comment not found"
+
+    });
+  }
+
+
+
+  if (req.files) {
+    console.log(`inside add comment reply file present`);
+    const audios =
+      req.files.audio && req.files.audio.length
+        ? req.files.audio.map((aud) => {
+          const audioUrl = getStaticCommentAudioFilePath(req, aud.filename);
+          const audioLocalPath = getCommentAudioLocalPath(aud.filename);
+          return { url: audioUrl, localPath: audioLocalPath };
+        })
+        : [];
+
+    const images =
+      req.files.image && req.files.image.length
+        ? req.files.image.map((img) => {
+          const imageUrl = getStaticCommentImageFilePath(req, img.filename);
+          const imageLocalPath = getCommentImageLocalPath(img.filename);
+          return { url: imageUrl, localPath: imageLocalPath };
+        })
+        : [];
+    const videos =
+      req.files.video && req.files.video.length
+        ? req.files.video.map((vid) => {
+          const videoUrl = getStaticCommentVideoFilePath(req, vid.filename);
+          const videoLocalPath = getCommentVideoLocalPath(vid.filename);
+          return { url: videoUrl, localPath: videoLocalPath };
+        })
+        : [];
+
+    const thumbnails =
+      req.files.thumbnail && req.files.thumbnail.length
+        ? req.files.thumbnail.map((tn) => {
+          const thumbnailUrl = getStaticCommentThumbnailFilePath(
+            req,
+            tn.filename
+          );
+          const thumbnailLocalPath = getCommentThumbnailLocalPath(
+            tn.filename
+          );
+          return { url: thumbnailUrl, localPath: thumbnailLocalPath };
+        })
+        : [];
+
+    const docs =
+      req.files.docs && req.files.docs.length
+        ? req.files.docs.map((doc) => {
+          const docUrl = getStaticCommentDocsFilePath(req, doc.filename);
+          const docLocalPath = getCommentDocsLocalPath(doc.filename);
+          return { url: docUrl, localPath: docLocalPath };
+        })
+        : [];
+
+    console.log(`files present`);
+
+    const commentReply = await SocialCommentReply.create({
+      content,
+      contentType,
+      author: req.user?._id,
+      commentId,
+      duration: duration,
+      audios: audios || [],
+      images: images || [],
+      videos: videos || [],
+      thumbnail: thumbnails,
+      docs: docs,
+      thumbnail: thumbnails,
+      fileName: fileName,
+      fileSize: fileSize,
+      fileType: fileType,
+      numberOfPages: numberOfPages,
+      gifs: gifs
+    });
+
+    console.log("comment has been replied successfully :", commentReply);
+
+    const comment = await SocialCommentReply.aggregate([
+      {
+        $match: {
+          _id: new mongoose.Types.ObjectId(commentId),
+        },
+      },
+      ...postCommonAggregation(req),
+    ]);
+    const receiverId = commentAuthor;
+
+    if (receiverId.toString() !== req.user._id.toString()) {
+      const user = await User.findById(receiverId);
+      console.log(`Creating comment reply notification for user: ${user.username} with ID: ${receiverId}`);
+      // Follow Notification
+      await UnifiedNotification.create({
+        owner: commentAuthor,
+        sender: req.user._id,
+        message: `${req.user.username} replied to your comment.`,
+        avatar: req.user.avatar,
+        type: 'onCommentPost',
+        data: {
+          postId: isCommentAvailable.postId,
+          for: "social",
+          commentId: isCommentAvailable._id,
+          commentReplyId: commentReply._id
+        },
+      });
+
+      const notifications = await UnifiedNotification.aggregate([
+        {
+          $match: {
+            owner: new mongoose.Types.ObjectId(receiverId),
+          },
+        },
+        ...unifiedNotificationCommonAggregation(),
+        {
+          $sort: {
+            createdAt: -1,
+          },
+        },
+      ]);
+
+      if (notifications.length === 0) {
+        throw new ApiError(500, 'Internal server error');
+      }
+
+      const newNotification = notifications[0];
+      if (!newNotification) {
+        throw new ApiError(500, 'Internal server error');
+      }
+      console.log(`new comment notification: ${newNotification}`)
+
+      // Emit socket event for the new notification
+      emitSocketEvent(req, String(receiverId), 'onCommentPosted', newNotification);
+
+      emitUnreadCountUpdate(req, String(receiverId));
+    }
+    return res
+      .status(201)
+      .json(
+        new ApiResponse(201, commentReply, "Comment reply added successfully")
+      );
+  } else {
+    console.log(`files not present`);
+    console.log(`postId ${postId}, content ${content}`)
+
+    const commentReply = await SocialCommentReply.create({
+      content,
+      contentType,
+      author: req.user?._id,
+      commentId,
+      gifs: gifs,
+    });
+
+
+
+    return res
+      .status(201)
+      .json(
+        new ApiResponse(201, commentReply, "Comment reply added successfully")
+      );
+  }
+
+});
