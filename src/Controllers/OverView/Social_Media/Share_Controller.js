@@ -106,3 +106,20 @@ const getMySharedShorts = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, posts, "Shared shorts fetched successfully"));
 });
 
+
+
+const getSharesForPost = asyncHandler(async (req, res) => {
+  const { postId } = req.params;
+
+  const post = await SocialPost.findById(postId);
+  if (!post) throw new ApiError(404, "Post does not exist");
+
+  const shareCount = await SocialShare.countDocuments({ postId });
+  const hasShared = !!(await SocialShare.findOne({ postId, sharedBy: req.user._id }));
+
+  return res.status(200).json(
+    new ApiResponse(200, { postId, shareCount, hasShared }, "Share data fetched successfully")
+  );
+});
+
+export { sharePost, getMySharedShorts, getSharesForPost };
