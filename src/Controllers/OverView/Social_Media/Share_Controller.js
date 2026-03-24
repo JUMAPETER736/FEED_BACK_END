@@ -59,3 +59,50 @@ const sharePost = asyncHandler(async (req, res) => {
     new ApiResponse(200, { shareCount }, "Post shared successfully")
   );
 });
+
+
+
+const getMySharedShorts = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10 } = req.query;
+
+  const { postCommonAggregation } = await import("./post.controllers.js");
+
+  // ✅ Get ALL shared postIds from everyone in the system
+  const sharedPostIds = await SocialShare.distinct("postId");
+
+  if (!sharedPostIds.length) {
+    return res.status(200).json(
+      new ApiResponse(200, { totalSharedShorts: 0, sharedShorts: [], page: Number(page), totalPages: 0 }, "No shared shorts found")
+    );
+  }
+
+  const objectIds = sharedPostIds
+    .map((id) => {
+      try {
+        return new mongoose.Types.ObjectId(id.toString());
+      } catch {
+        return null;
+      }
+    })
+    .filter(Boolean);
+
+  const postAggregation = SocialPost.aggregate([
+    { $match: { _id: { $in: objectIds } } },
+    { $sort: { createdAt: -1 } },
+    ...postCommonAggregation(req),
+  ]);
+
+  const posts = await SocialPost.aggregatePaginate(
+    postAggregation,
+    getMongoosePaginationOptions({
+      page,
+      limit,
+      customLabels: { totalDocs: "totalSharedShorts", docs: "sharedShorts" },
+    })
+  );
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, posts, "Shared shorts fetched successfully"));
+});
+
