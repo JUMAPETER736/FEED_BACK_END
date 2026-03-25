@@ -102,3 +102,42 @@ export const removeFromCloseFriends = asyncHandler(async (req, res) => {
   );
 });
 
+
+export const checkCloseFriendStatus = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  validateUserId(userId);
+
+  const exists = await SocialCloseFriends.findOne({
+    userId: req.user._id,
+    closeFriendId: userId,
+  });
+
+  res.status(200).json(
+    new ApiResponse(200, { isCloseFriend: !!exists }, "Close friend status checked")
+  );
+});
+
+/* ==================== MUTE POSTS ==================== */
+export const mutePosts = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  validateUserId(userId);
+
+  const exists = await SocialMutedPosts.findOne({
+    userId: req.user._id,
+    mutedUserId: userId,
+  });
+
+  if (exists) {
+    throw new ApiError(400, "Posts already muted");
+  }
+
+  const data = await SocialMutedPosts.create({
+    userId: req.user._id,
+    mutedUserId: userId,
+  });
+
+  res.status(201).json(
+    new ApiResponse(201, data, "Posts muted successfully")
+  );
+});
+
