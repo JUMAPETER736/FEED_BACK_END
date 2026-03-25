@@ -332,3 +332,42 @@ export const getFavorites = asyncHandler(async (req, res) => {
     new ApiResponse(200, favoritesWithDetails, "Favorites fetched successfully")
   );
 });
+
+
+export const checkFavoriteStatus = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  validateUserId(userId);
+
+  const exists = await SocialFavorites.findOne({
+    userId: req.user._id,
+    favoriteUserId: userId,
+  });
+
+  res.status(200).json(
+    new ApiResponse(200, { isFavorite: !!exists }, "Favorite status checked")
+  );
+});
+
+/* ==================== RESTRICT ==================== */
+export const restrictUser = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  validateUserId(userId);
+
+  const exists = await SocialRestricted.findOne({
+    userId: req.user._id,
+    restrictedUserId: userId,
+  });
+
+  if (exists) {
+    throw new ApiError(400, "User already restricted");
+  }
+
+  const data = await SocialRestricted.create({
+    userId: req.user._id,
+    restrictedUserId: userId,
+  });
+
+  res.status(201).json(
+    new ApiResponse(201, data, "User restricted")
+  );
+});
