@@ -141,3 +141,41 @@ export const mutePosts = asyncHandler(async (req, res) => {
   );
 });
 
+export const unmutePosts = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+
+  const removed = await SocialMutedPosts.findOneAndDelete({
+    userId: req.user._id,
+    mutedUserId: userId,
+  });
+
+  if (!removed) {
+    throw new ApiError(404, "Posts are not muted");
+  }
+
+  res.status(200).json(
+    new ApiResponse(200, null, "Posts unmuted successfully")
+  );
+});
+
+export const getMutedPostsUsers = asyncHandler(async (req, res) => {
+  const mutedPosts = await SocialMutedPosts.find({
+    userId: req.user._id,
+  }).sort({ createdAt: -1 });
+
+  const mutedUsersWithDetails = await Promise.all(
+    mutedPosts.map(async (mp) => {
+      const userDetails = await populateUserDetails(mp.mutedUserId);
+      return {
+        _id: mp._id,
+        user: userDetails,
+        mutedAt: mp.createdAt,
+      };
+    })
+  );
+
+  res.status(200).json(
+    new ApiResponse(200, mutedUsersWithDetails, "Muted posts users fetched successfully")
+  );
+});
+
