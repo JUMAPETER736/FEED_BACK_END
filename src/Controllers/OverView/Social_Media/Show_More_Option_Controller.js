@@ -255,3 +255,42 @@ export const getMutedStoriesUsers = asyncHandler(async (req, res) => {
     new ApiResponse(200, mutedUsersWithDetails, "Muted stories users fetched successfully")
   );
 });
+
+
+export const checkMutedStoriesStatus = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  validateUserId(userId);
+
+  const exists = await SocialMutedStories.findOne({
+    userId: req.user._id,
+    mutedUserId: userId,
+  });
+
+  res.status(200).json(
+    new ApiResponse(200, { isStoriesMuted: !!exists }, "Muted stories status checked")
+  );
+});
+
+/* ==================== FAVORITES ==================== */
+export const addToFavorites = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  validateUserId(userId);
+
+  const exists = await SocialFavorites.findOne({
+    userId: req.user._id,
+    favoriteUserId: userId,
+  });
+
+  if (exists) {
+    throw new ApiError(400, "User already in favorites");
+  }
+
+  const data = await SocialFavorites.create({
+    userId: req.user._id,
+    favoriteUserId: userId,
+  });
+
+  res.status(201).json(
+    new ApiResponse(201, data, "Added to favorites")
+  );
+});
