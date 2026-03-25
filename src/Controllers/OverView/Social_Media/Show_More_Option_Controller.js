@@ -217,3 +217,41 @@ export const muteStories = asyncHandler(async (req, res) => {
   );
 });
 
+
+export const unmuteStories = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+
+  const removed = await SocialMutedStories.findOneAndDelete({
+    userId: req.user._id,
+    mutedUserId: userId,
+  });
+
+  if (!removed) {
+    throw new ApiError(404, "Stories are not muted");
+  }
+
+  res.status(200).json(
+    new ApiResponse(200, null, "Stories unmuted successfully")
+  );
+});
+
+export const getMutedStoriesUsers = asyncHandler(async (req, res) => {
+  const mutedStories = await SocialMutedStories.find({
+    userId: req.user._id,
+  }).sort({ createdAt: -1 });
+
+  const mutedUsersWithDetails = await Promise.all(
+    mutedStories.map(async (ms) => {
+      const userDetails = await populateUserDetails(ms.mutedUserId);
+      return {
+        _id: ms._id,
+        user: userDetails,
+        mutedAt: ms.createdAt,
+      };
+    })
+  );
+
+  res.status(200).json(
+    new ApiResponse(200, mutedUsersWithDetails, "Muted stories users fetched successfully")
+  );
+});
