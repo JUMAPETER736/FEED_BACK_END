@@ -371,3 +371,56 @@ export const restrictUser = asyncHandler(async (req, res) => {
     new ApiResponse(201, data, "User restricted")
   );
 });
+
+
+export const unrestrictUser = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+
+  const removed = await SocialRestricted.findOneAndDelete({
+    userId: req.user._id,
+    restrictedUserId: userId,
+  });
+
+  if (!removed) {
+    throw new ApiError(404, "User is not restricted");
+  }
+
+  res.status(200).json(
+    new ApiResponse(200, null, "User unrestricted")
+  );
+});
+
+export const getRestrictedUsers = asyncHandler(async (req, res) => {
+  const restricted = await SocialRestricted.find({
+    userId: req.user._id,
+  }).sort({ createdAt: -1 });
+
+  const restrictedWithDetails = await Promise.all(
+    restricted.map(async (r) => {
+      const userDetails = await populateUserDetails(r.restrictedUserId);
+      return {
+        _id: r._id,
+        user: userDetails,
+        restrictedAt: r.createdAt,
+      };
+    })
+  );
+
+  res.status(200).json(
+    new ApiResponse(200, restrictedWithDetails, "Restricted users fetched successfully")
+  );
+});
+
+export const checkRestrictedStatus = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  validateUserId(userId);
+
+  const exists = await SocialRestricted.findOne({
+    userId: req.user._id,
+    restrictedUserId: userId,
+  });
+
+  res.status(200).json(
+    new ApiResponse(200, { isRestricted: !!exists }, "Restricted status checked")
+  );
+});
