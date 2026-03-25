@@ -59,3 +59,46 @@ const populateUserDetails = async (userId) => {
 
   return userDetails;
 };
+
+
+/* ==================== CLOSE FRIENDS ==================== */
+export const addToCloseFriends = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  validateUserId(userId);
+
+  const exists = await SocialCloseFriends.findOne({
+    userId: req.user._id,
+    closeFriendId: userId,
+  });
+
+  if (exists) {
+    throw new ApiError(400, "User already in close friends");
+  }
+
+  const data = await SocialCloseFriends.create({
+    userId: req.user._id,
+    closeFriendId: userId,
+  });
+
+  res.status(201).json(
+    new ApiResponse(201, data, "Added to close friends")
+  );
+});
+
+export const removeFromCloseFriends = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+
+  const removed = await SocialCloseFriends.findOneAndDelete({
+    userId: req.user._id,
+    closeFriendId: userId,
+  });
+
+  if (!removed) {
+    throw new ApiError(404, "User not found in close friends");
+  }
+
+  res.status(200).json(
+    new ApiResponse(200, null, "Removed from close friends")
+  );
+});
+
