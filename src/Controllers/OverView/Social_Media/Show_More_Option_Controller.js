@@ -294,3 +294,41 @@ export const addToFavorites = asyncHandler(async (req, res) => {
     new ApiResponse(201, data, "Added to favorites")
   );
 });
+
+export const removeFromFavorites = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+
+  const removed = await SocialFavorites.findOneAndDelete({
+    userId: req.user._id,
+    favoriteUserId: userId,
+  });
+
+  if (!removed) {
+    throw new ApiError(404, "User not found in favorites");
+  }
+
+  res.status(200).json(
+    new ApiResponse(200, null, "Removed from favorites")
+  );
+});
+
+export const getFavorites = asyncHandler(async (req, res) => {
+  const favorites = await SocialFavorites.find({
+    userId: req.user._id,
+  }).sort({ createdAt: -1 });
+
+  const favoritesWithDetails = await Promise.all(
+    favorites.map(async (fav) => {
+      const userDetails = await populateUserDetails(fav.favoriteUserId);
+      return {
+        _id: fav._id,
+        user: userDetails,
+        addedAt: fav.createdAt,
+      };
+    })
+  );
+
+  res.status(200).json(
+    new ApiResponse(200, favoritesWithDetails, "Favorites fetched successfully")
+  );
+});
