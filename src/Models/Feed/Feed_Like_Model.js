@@ -1,5 +1,5 @@
 import mongoose, { Schema } from "mongoose";
-import mongooseAggregatePaginate from "mongoose-aggregate-paginate-v2"; // ✅ Add this import
+import mongooseAggregatePaginate from "mongoose-aggregate-paginate-v2"; //  Add this import
 
 const likeSchema = new Schema(
   {
