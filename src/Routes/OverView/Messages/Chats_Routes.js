@@ -43,13 +43,13 @@ const router = Router();
 
 router.use(verifyJWT);
 
-// ─── Chat list ────────────────────────────────────────────────────────────────
+//  Chat list 
 
 router.route("/").get(getAllChats);
 router.route("/fetchChat/:chatId").get(getChatById);
 router.route("/groups").get(getAllGroupChats);
 
-// ─── User search & status ─────────────────────────────────────────────────────
+//  User search & status 
 
 router.route("/users").get(searchAvailableUsers);
 router.route("/users/search").get(searchUsers);
@@ -69,36 +69,36 @@ router
   .route("/users/:userId/e2ee-status")
   .get(mongoIdPathVariableValidator("userId"), validate, checkParticipantE2EEStatus);
 
-// ─── 1-on-1 chat ──────────────────────────────────────────────────────────────
+//  1-on-1 chat 
 
 router
   .route("/c/:receiverId")
   .post(mongoIdPathVariableValidator("receiverId"), validate, createOrGetAOneOnOneChat);
 
-// ─── Group: create ────────────────────────────────────────────────────────────
+//  Group: create
 
 router
   .route("/group")
   .post(createAGroupChatValidator(), validate, createAGroupChat);
 
-// ─── Group: join via invite link ──────────────────────────────────────────────
+//  Group: join via invite link 
 // Must be declared BEFORE /group/:chatId so Express does not treat "join" as a chatId param.
 
 router.route("/group/join/:inviteToken").post(joinGroupViaInviteLink);
 
-// ─── Group: permissions ───────────────────────────────────────────────────────
+//  Group: permissions 
 
 router
   .route("/group/:chatId/permissions")
   .patch(mongoIdPathVariableValidator("chatId"), validate, updateGroupPermissions);
 
-// ─── Group: report ────────────────────────────────────────────────────────────
+//  Group: report 
 
 router
   .route("/group/:chatId/report")
   .post(mongoIdPathVariableValidator("chatId"), validate, reportGroup);
 
-// ─── Group: avatar ────────────────────────────────────────────────────────────
+//  Group: avatar 
 
 router
   .route("/group/:chatId/avatar")
@@ -109,26 +109,26 @@ router
     updateGroupAvatar
   );
 
-// ─── Group: bulk-add participants ────────────────────────────────────────────
+//  Group: bulk-add participants 
 
 router
   .route("/group/:chatId/participants")
   .post(mongoIdPathVariableValidator("chatId"), validate, addMultipleParticipantsToGroupChat);
 
-// ─── Group: E2EE key distribution ────────────────────────────────────────────
+// Group: E2EE key distribution
 
 router
   .route("/group/:chatId/keys")
   .post(mongoIdPathVariableValidator("chatId"), validate, storeGroupEncryptedKeys)
   .get(mongoIdPathVariableValidator("chatId"), validate, getMyGroupKey);
 
-// ─── Group: members list ──────────────────────────────────────────────────────
+//  Group: members list 
 
 router
   .route("/group/:chatId/members")
   .get(mongoIdPathVariableValidator("chatId"), validate, getGroupMembers);
 
-// ─── Group: change a member's role ───────────────────────────────────────────
+//  Group: change a member's role 
 
 router
   .route("/group/:chatId/members/:userId/role")
@@ -139,7 +139,7 @@ router
     changeMemberRole
   );
 
-// ─── Group: mute / unmute a member ───────────────────────────────────────────
+//  Group: mute / unmute a member 
 
 router
   .route("/group/:chatId/members/:userId/mute")
@@ -150,14 +150,14 @@ router
     setMemberMuteStatus
   );
 
-// ─── Group: invite link management ───────────────────────────────────────────
+//  Group: invite link management 
 
 router
   .route("/group/:chatId/link")
   .post(mongoIdPathVariableValidator("chatId"), validate, generateGroupInviteLink)
   .delete(mongoIdPathVariableValidator("chatId"), validate, revokeGroupInviteLink);
 
-// ─── Group: details / rename / delete ────────────────────────────────────────
+// Group: details / rename / delete 
 
 router
   .route("/group/:chatId")
@@ -170,7 +170,7 @@ router
   )
   .delete(mongoIdPathVariableValidator("chatId"), validate, deleteGroupChat);
 
-// ─── Group: add / remove a single participant ─────────────────────────────────
+//  Group: add / remove a single participant 
 
 router
   .route("/group/:chatId/:participantId")
@@ -187,7 +187,7 @@ router
     removeParticipantFromGroupChat
   );
 
-// ─── Leave / delete ───────────────────────────────────────────────────────────
+// Leave / delete 
 
 router
   .route("/leave/group/:chatId")
