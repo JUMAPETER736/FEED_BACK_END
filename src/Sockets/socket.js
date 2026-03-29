@@ -4,7 +4,7 @@ import { Server, Socket } from "socket.io";
 import { AvailableChatEvents, ChatEventEnum, NotificationEventEnum, } from "../constants.js";
 import { User } from "../models/apps/auth/user.models.js";
 import { ApiError } from "../Utils/API_Errors.js";
-import { removeLocalFile } from "../utils/helpers.js";
+import { removeLocalFile } from "../Utils/Helpers.js";
 import { ChatMessage } from "../models/apps/chat-app/message.models.js";
 import { BusinessNotification } from "../models/apps/business/businesspost/notification/business.notification.model.js";
 import UnifiedNotification from "../models/apps/notifications/unified.notification.model.js";

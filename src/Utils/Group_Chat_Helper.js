@@ -1,6 +1,6 @@
 import { ChatMessage } from "../models/apps/chat-app/message.models";
 import { Chat } from "../models/apps/chat-app/chat.models";
-import { removeLocalFile } from "./helpers";
+import { removeLocalFile } from "./Helpers";
 
 const deleteMessage = async (messageId) => {
   try {
