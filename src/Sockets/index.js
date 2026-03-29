@@ -7,7 +7,7 @@ import {
   NotificationEventEnum,
 } from "../constants.js";
 import { User } from "../models/apps/auth/user.models.js";
-import { ApiError } from "../utils/ApiError.js";
+import { ApiError } from "../Utils/API_Errors.js";
 
 /**
  * @description This function is responsible to allow user to join the chat represented by chatId (chatId). event happens when user switches between the chats
