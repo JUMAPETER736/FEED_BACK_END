@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 import { Server, Socket } from "socket.io";
 import { AvailableChatEvents, ChatEventEnum, NotificationEventEnum, } from "../constants.js";
 import { User } from "../models/apps/auth/user.models.js";
-import { ApiError } from "../Utils/API_Errors.js";
+import { ApiError } from "../utils/ApiError.js";
 import { removeLocalFile } from "../Utils/Helpers.js";
 import { ChatMessage } from "../models/apps/chat-app/message.models.js";
 import { BusinessNotification } from "../models/apps/business/businesspost/notification/business.notification.model.js";
@@ -288,7 +288,6 @@ const initializeSocketIO = (io) => {
       socket.join(user._id.toString());
       socket.emit(ChatEventEnum.CONNECTED_EVENT); // emit the connected event so that client is aware
       console.log("User connected . userId: socket.js", user._id.toString());
-
       // Common events that needs to be mounted on the initialization
       mountJoinChatEvent(socket);
       mountParticipantTypingEvent(socket);
@@ -382,7 +381,20 @@ const handleUserConnection = async (socket) => {
       // Log the socket ID before removal
       console.log("Socket ID before removal: ", socket.id);
 
+      // // Retrieve the user ID from the socket and remove from the map
+      // const userIdToRemove = socket.user?._id;
+      // const removed = activeConnections.delete(userIdToRemove);
 
+      // if (removed) {
+      //   console.log("User removed from active connections map");
+
+      //   console.log(
+      //     "Connected Users . size after one removed: ",
+      //     activeConnections.size
+      //   );
+      // } else {
+      //   console.log("User not found in active connections map");
+      // }
       if (socket.user?._id) {
         socket.leave(socket.user._id);
       }
@@ -431,7 +443,26 @@ const handleUserConnection = async (socket) => {
       return userIdToSocketMap.has(userId);
     }
 
+    // // Handle disconnect event
+    // socket.on(ChatEventEnum.DISCONNECT_EVENT, () => {
+    //   console.log("User has disconnected . userId: " + socket.user?._id);
 
+    //     // Update the last seen timestamp before disconnecting
+    //   socket.user.lastSeen = new Date();
+    //   await socket.user.save();
+
+    //   if (socket.user?._id) {
+    //     socket.leave(socket.user._id);
+    //   }
+
+    //   // Broadcast last seen information to chat rooms
+    //   socket.rooms.forEach((room) => {
+    //     socket.in(room).emit(ChatEventEnum.LAST_SEEN_EVENT, {
+    //       userId: socket.user?._id,
+    //       lastSeen: socket.user?.lastSeen,
+    //     });
+    //   });
+    // });
   } catch (error) {
     socket.emit(
       ChatEventEnum.SOCKET_ERROR_EVENT,
