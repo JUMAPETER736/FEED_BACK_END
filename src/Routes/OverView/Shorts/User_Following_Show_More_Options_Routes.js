@@ -28,7 +28,7 @@ import {
 
 const router = Router();
 
-/* ==================== CLOSE FRIENDS ==================== */
+/*  CLOSE FRIENDS  */
 router.route("/close-friends")
     .get(verifyJWT, getCloseFriends);
 
@@ -37,7 +37,7 @@ router.route("/close-friends/:userId")
     .post(verifyJWT, mongoIdPathVariableValidator("userId"), validate, addToCloseFriends)
     .delete(verifyJWT, mongoIdPathVariableValidator("userId"), validate, removeFromCloseFriends);
 
-/* ==================== MUTE POSTS ==================== */
+/*  MUTE POSTS  */
 router.route("/mute/posts")
     .get(verifyJWT, getMutedPostsUsers);
 
@@ -46,7 +46,7 @@ router.route("/mute/posts/:userId")
     .post(verifyJWT, mongoIdPathVariableValidator("userId"), validate, mutePosts)
     .delete(verifyJWT, mongoIdPathVariableValidator("userId"), validate, unmutePosts);
 
-/* ==================== MUTE STORIES ==================== */
+/*  MUTE STORIES */
 router.route("/mute/stories")
     .get(verifyJWT, getMutedStoriesUsers);
 
@@ -55,7 +55,7 @@ router.route("/mute/stories/:userId")
     .post(verifyJWT, mongoIdPathVariableValidator("userId"), validate, muteStories)
     .delete(verifyJWT, mongoIdPathVariableValidator("userId"), validate, unmuteStories);
 
-/* ==================== FAVORITES ==================== */
+/*  FAVORITES  */
 router.route("/favorites")
     .get(verifyJWT, getFavorites);
 
@@ -64,7 +64,7 @@ router.route("/favorites/:userId")
     .post(verifyJWT, mongoIdPathVariableValidator("userId"), validate, addToFavorites)
     .delete(verifyJWT, mongoIdPathVariableValidator("userId"), validate, removeFromFavorites);
 
-/* ==================== RESTRICT ==================== */
+/* RESTRICT */
 router.route("/restrict")
     .get(verifyJWT, getRestrictedUsers);
 
