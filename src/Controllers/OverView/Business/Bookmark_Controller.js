@@ -1,8 +1,10 @@
-import { BusinessProduct } from "../../../../models/apps/business/business.product.model.js";
-import { BusinessBookmark } from "../../../../models/apps/business/businesspost/business.bookmark.post.model.js";
-import { ApiError } from "../../../../utils/ApiError.js";
-import { ApiResponse } from "../../../../utils/ApiResponse.js";
-import { asyncHandler } from "../../../../utils/asyncHandler.js";
+
+
+import { BusinessProduct } from "../../../../Models/OverView/Business/Business_Product_Model.js";
+import { BusinessBookmark } from "../../../../Models/OverView/Business/Business_Bookmark_Post_Model.js";
+import { ApiError } from "../../../../Utils/API_Error.js";
+import { ApiResponse } from "../../../../Utils/API_Response.js";
+import { asyncHandler } from "../../../../Utils/Async_Handler.js";
 
 export const bookmarkUnBookmarkBusinessPost = asyncHandler(async (req, res) => {
 

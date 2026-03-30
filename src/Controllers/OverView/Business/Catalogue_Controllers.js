@@ -1,9 +1,11 @@
-import { BusinessCatalogue } from "../../../models/apps/business/business.catalogue.model.js";
-import { BusinessProduct } from "../../../models/apps/business/business.product.model.js";
-import { ApiError } from "../../../utils/ApiError.js";
-import { ApiResponse } from "../../../utils/ApiResponse.js";
-import { asyncHandler } from "../../../utils/asyncHandler.js";
-import { getStaticBusinessProductImagePath } from "../../../utils/helpers.js";
+
+
+import { BusinessCatalogue } from "../../../Models/OverView/Business/Business_Catalogue_Model.js";
+import { BusinessProduct } from "../../../Models/OverView/Business/Business_Product_Model.js";
+import { ApiError } from "../../../Utils/API_Error.js";
+import { ApiResponse } from "../../../Utils/API_Response.js";
+import { asyncHandler } from "../../../Utils/Async_Handler.js";
+import { getStaticBusinessProductImagePath } from "../../../Utils/Helpers.js";
 import fs from "fs";
 import path from "path";
 import { SocialPost } from "../../../models/apps/social-media/post.models.js";
