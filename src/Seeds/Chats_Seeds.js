@@ -9,7 +9,7 @@ import {
   GROUP_CHATS_COUNT,
   GROUP_CHAT_MAX_PARTICIPANTS_COUNT,
   ONE_ON_ONE_CHATS_COUNT,
-} from "./_constants.js";
+} from "./Constants.js";
 
 const seedOneOnOneChats = async () => {
   const users = await User.find();

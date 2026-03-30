@@ -12,7 +12,7 @@ import {
 import { commentContentValidator } from "../../../validators/apps/social-media/comment.validators.js";
 import { validate } from "../../../validators/validate.js";
 import { mongoIdPathVariableValidator } from "../../../validators/common/mongodb.validators.js";
-import { MAXIMUM_SOCIAL_POST_IMAGE_COUNT } from "../../../constants.js";
+import { MAXIMUM_SOCIAL_POST_IMAGE_COUNT } from "../../../Constants.js";
 import { upload } from "../../../middlewares/feed_commentsmulter.middlewares.js";
 const router = Router();
 

@@ -1,7 +1,7 @@
 import cookie from "cookie";
 import jwt from "jsonwebtoken";
 import { Server, Socket } from "socket.io";
-import { AvailableChatEvents, ChatEventEnum, NotificationEventEnum, } from "../constants.js";
+import { AvailableChatEvents, ChatEventEnum, NotificationEventEnum, } from "../Constants.js";
 import { User } from "../models/apps/auth/user.models.js";
 import { ApiError } from "../utils/ApiError.js";
 import { removeLocalFile } from "../Utils/Helpers.js";

@@ -14,7 +14,7 @@ import {
   verifyPermission,
   verifyJWT,
 } from "../../../middlewares/auth.middlewares.js";
-import { UserRolesEnum } from "../../../constants.js";
+import { UserRolesEnum } from "../../../Constants.js";
 import { mongoIdPathVariableValidator } from "../../../validators/common/mongodb.validators.js";
 
 const router = Router();

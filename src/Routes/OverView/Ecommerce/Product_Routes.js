@@ -18,7 +18,7 @@ import {
   updateProductValidator,
 } from "../../../validators/apps/ecommerce/product.validators.js";
 import { validate } from "../../../validators/validate.js";
-import { MAXIMUM_SUB_IMAGE_COUNT, UserRolesEnum } from "../../../constants.js";
+import { MAXIMUM_SUB_IMAGE_COUNT, UserRolesEnum } from "../../../Constants.js";
 import { mongoIdPathVariableValidator } from "../../../validators/common/mongodb.validators.js";
 
 const router = Router();

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import passport from "passport";
-import { UserRolesEnum } from "../../../constants.js";
+import { UserRolesEnum } from "../../../Constants.js";
 import {
   assignRole,
   changeCurrentPassword,

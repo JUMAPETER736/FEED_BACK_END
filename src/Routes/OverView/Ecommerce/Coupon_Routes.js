@@ -21,7 +21,7 @@ import {
   updateCouponValidator,
 } from "../../../validators/apps/ecommerce/coupon.validators.js";
 import { validate } from "../../../validators/validate.js";
-import { UserRolesEnum } from "../../../constants.js";
+import { UserRolesEnum } from "../../../Constants.js";
 import { mongoIdPathVariableValidator } from "../../../validators/common/mongodb.validators.js";
 
 const router = Router();

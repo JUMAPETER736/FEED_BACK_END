@@ -13,7 +13,7 @@ import { commentContentValidator } from "../../../validators/apps/social-media/c
 import { validate } from "../../../validators/validate.js";
 import { mongoIdPathVariableValidator } from "../../../validators/common/mongodb.validators.js";
 import { upload } from "../../../middlewares/feed_commentsmulter.middlewares.js";
-import { MAXIMUM_SOCIAL_POST_IMAGE_COUNT } from "../../../constants.js";
+import { MAXIMUM_SOCIAL_POST_IMAGE_COUNT } from "../../../Constants.js";
 const router = Router();
 
 router

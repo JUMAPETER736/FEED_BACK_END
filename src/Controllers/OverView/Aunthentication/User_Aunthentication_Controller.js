@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
-import { UserLoginType, UserRolesEnum } from "../../../constants.js";
+import { UserLoginType, UserRolesEnum } from "../../../Constants.js";
 import { User } from "../../../models/apps/auth/user.models.js";
 import { ApiError } from "../../../utils/ApiError.js";
 import { ApiResponse } from "../../../utils/ApiResponse.js";
@@ -15,7 +15,7 @@ import {
   getAvatarLocalPath,
   getStaticAvatarFilePath,
   removeLocalFile,
-} from "../../../utils/helpers.js";
+} from "../../../Utils/Helpers.js";
 
 import {
 

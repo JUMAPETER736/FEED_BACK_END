@@ -19,7 +19,7 @@ import YAML from "yaml";
 // ============================================================
 // DATABASE & INTERNAL UTILITIES
 // ============================================================
-import { DB_NAME } from "./constants.js";
+import { DB_NAME } from "./Constants.js";
 import { dbInstance } from "./db/index.js";
 import { initializeSocketIO, initializeSocketIOT } from "./socket/socket.js";
 import { ApiError } from "./utils/ApiError.js";
