@@ -1,5 +1,5 @@
 import asyncHandler from "express-async-handler";
-import User from "../data/models/userModel.js";
+import User from "../Data/Models/User_Model.js";
 import generateToken from "../config/generateToken.js";
 
 //  REGISTER FUNCTION

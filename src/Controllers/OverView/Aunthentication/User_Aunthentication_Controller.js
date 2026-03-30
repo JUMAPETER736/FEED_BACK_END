@@ -1,12 +1,12 @@
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { UserLoginType, UserRolesEnum } from "../../../Constants.js";
-import { User } from "../../../models/apps/auth/user.models.js";
-import { ApiError } from "../../../utils/ApiError.js";
-import { ApiResponse } from "../../../utils/ApiResponse.js";
-import { asyncHandler } from "../../../utils/asyncHandler.js";
+import { User } from "../../../Models/OverView/Aunthentication/User_Model";
+import { ApiError } from "../../../Utils/API_Errors.js";
+import { ApiResponse } from "../../../Utils/API_Response.js";
+import { asyncHandler } from "../../../Utils/Async_Handler.js";
 import asyncHanDler from "express-async-handler";
-import USER from "../../../data/models/userModel.js";
+import USER from "../../../Data/Models/User_Model.js";
 import generateToken from "../../../config/generateToken.js"
 
 import {
