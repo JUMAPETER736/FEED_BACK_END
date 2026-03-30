@@ -206,13 +206,14 @@ import Message_Router from "./Routes/OverView/Messages/Message_Routes.js";
 // NOTE: No Kitchen-Sink route folder found in your repo.
 // These are commented out — create the files if needed.
 // ============================================================
-// import Cookie_Router              from "./Routes/OverView/Sink/Cookie_Routes.js";
-// import Http_Method_Router         from "./Routes/OverView/Sink/HttpMethod_Routes.js";
-// import Image_Router               from "./Routes/OverView/Sink/Image_Routes.js";
-// import Redirect_Router            from "./Routes/OverView/Sink/Redirect_Routes.js";
-// import Request_Inspection_Router  from "./Routes/OverView/Sink/RequestInspection_Routes.js";
-// import Response_Inspection_Router from "./Routes/OverView/Sink/ResponseInspection_Routes.js";
-// import Status_Code_Router         from "./Routes/OverView/Sink/StatusCode_Routes.js";
+
+import Cookie_Router              from "./Routes/Sink/Cookie_Routes.js";
+import Http_Method_Router         from "./Routes/Sink/HttpMethod_Routes.js";
+import Image_Router               from "./Routes/Sink/Image_Routes.js";
+import Redirect_Router            from "./Routes/Sink/Redirect_Routes.js";
+import Request_Inspection_Router  from "./Routes/Sink/RequestInspection_Routes.js";
+import Response_Inspection_Router from "./Routes/Sink/ResponseInspection_Routes.js";
+import Status_Code_Router         from "./Routes/Sink/StatusCode_Routes.js";
 
 // ============================================================
 // DATABASE SEEDING HANDLERS
@@ -302,14 +303,14 @@ app.use("/api/v1/recommendations/events", Recomendation_Events_Router);
 // app.use("/api/v1/public/cats",           Cat_Router);
 // app.use("/api/v1/public/youtube",        Youtube_Router);
 
-// -- Kitchen Sink (uncomment when route files are created)
-// app.use("/api/v1/kitchen-sink/http-methods", Http_Method_Router);
-// app.use("/api/v1/kitchen-sink/status-codes", Status_Code_Router);
-// app.use("/api/v1/kitchen-sink/request",      Request_Inspection_Router);
-// app.use("/api/v1/kitchen-sink/response",     Response_Inspection_Router);
-// app.use("/api/v1/kitchen-sink/cookies",      Cookie_Router);
-// app.use("/api/v1/kitchen-sink/redirect",     Redirect_Router);
-// app.use("/api/v1/kitchen-sink/image",        Image_Router);
+// --  Sink (uncomment when route files are created)
+app.use("/api/v1/sink/http-methods", Http_Method_Router);
+app.use("/api/v1/sink/status-codes", Status_Code_Router);
+app.use("/api/v1/sink/request",      Request_Inspection_Router);
+app.use("/api/v1/sink/response",     Response_Inspection_Router);
+app.use("/api/v1/sink/cookies",      Cookie_Router);
+app.use("/api/v1/sink/redirect",     Redirect_Router);
+app.use("/api/v1/sink/image",        Image_Router);
 
 // -- Seeding (uncomment when seed files are created)
 // app.get("/api/v1/seed/generated-credentials", getGeneratedCredentials);
