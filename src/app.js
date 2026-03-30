@@ -111,15 +111,15 @@ import { errorHandler } from "./Middle_Wares/Error_Middle_Ware.js";
 // ============================================================
 // NOTE: Your repo has no Public Routes folder — add these files
 // if you need them, or remove these imports if unused.
-// import Book_Router           from "./Routes/OverView/Public/Book_Routes.js";
-// import Cat_Router            from "./Routes/OverView/Public/Cat_Routes.js";
-// import Dog_Router            from "./Routes/OverView/Public/Dog_Routes.js";
-// import Meal_Router           from "./Routes/OverView/Public/Meal_Routes.js";
-// import Quote_Router          from "./Routes/OverView/Public/Quote_Routes.js";
-// import Random_Joke_Router    from "./Routes/OverView/Public/Random_Joke_Routes.js";
-// import Random_Product_Router from "./Routes/OverView/Public/Random_Product_Routes.js";
-// import Random_User_Router    from "./Routes/OverView/Public/Random_User_Routes.js";
-// import Youtube_Router        from "./Routes/OverView/Public/Youtube_Routes.js";
+import Book_Router           from "./Routes/Public/Book_Routes.js";
+import Cat_Router            from "./Routes/Public/Cat_Routes.js";
+import Dog_Router            from "./Routes/Public/Dog_Routes.js";
+import Meal_Router           from "./Routes/Public/Meal_Routes.js";
+import Quote_Router          from "./Routes/Public/Quote_Routes.js";
+import Random_Joke_Router    from "./Routes/Public/Random_Joke_Routes.js";
+import Random_Product_Router from "./Routes/Public/Random_Product_Routes.js";
+import Random_User_Router    from "./Routes/Public/Random_User_Routes.js";
+import Youtube_Router        from "./Routes/Public/Youtube_Routes.js";
 
 // ============================================================
 // USER & AUTHENTICATION ROUTES
@@ -135,7 +135,7 @@ import Business_Router                    from "./Routes/OverView/Business/Busin
 import Catalogue_Router                   from "./Routes/OverView/Business/Catalogue_Routes.js";
 import Business_Post_Router               from "./Routes/OverView/Business/Business_Post_Routes.js";
 import Business_Post_Likes_Router         from "./Routes/OverView/Business/Business_Post_Like_Routes.js";
-import Business_Post_Comments_Router      from "./Routes/OverView/Business/Business_Post_Comment_Routes.js"; // NOTE: file is Business_Post_Routes — check if Comment routes exist separately
+import Business_Post_Comment_Router      from "./Routes/OverView/Business/Business_Post_Comment_Routes.js"; 
 import Business_Post_Comment_Reply_Router from "./Routes/OverView/Business/Business_Post_Comment_Reply_Routes.js";
 import Business_Post_Bookmark_Router      from "./Routes/OverView/Business/Business_Post_Bookmark_Routes.js";
 
@@ -207,13 +207,13 @@ import Message_Router from "./Routes/OverView/Messages/Message_Routes.js";
 // These are commented out — create the files if needed.
 // ============================================================
 
-import Cookie_Router              from "./Routes/Sink/Cookie_Routes.js";
-import Http_Method_Router         from "./Routes/Sink/HttpMethod_Routes.js";
-import Image_Router               from "./Routes/Sink/Image_Routes.js";
+import Cookies_Router              from "./Routes/Sink/Cookies_Routes.js";
+import HTTP_Method_Router         from "./Routes/Sink/HTTP_Method_Routes.js";
+import Images_Router               from "./Routes/Sink/Images_Routes.js";
 import Redirect_Router            from "./Routes/Sink/Redirect_Routes.js";
-import Request_Inspection_Router  from "./Routes/Sink/RequestInspection_Routes.js";
-import Response_Inspection_Router from "./Routes/Sink/ResponseInspection_Routes.js";
-import Status_Code_Router         from "./Routes/Sink/StatusCode_Routes.js";
+import Request_Inspection_Router  from "./Routes/Sink/Request_Inspection_Routes.js";
+import Response_Inspection_Router from "./Routes/Sink/Response_Inspection_Routes.js";
+import Status_Code_Router         from "./Routes/Sink/Status_Code_Routes.js";
 
 // ============================================================
 // DATABASE SEEDING HANDLERS
@@ -243,7 +243,7 @@ app.use("/api/v1/business/profile",                        Business_Router);
 app.use("/api/v1/business/catalogue",                      Catalogue_Router);
 app.use("/api/v1/business/product-posts",                  Business_Post_Router);
 app.use("/api/v1/business/product-posts/likes",            Business_Post_Likes_Router);
-app.use("/api/v1/business/product-posts/comments",         Business_Post_Comments_Router);
+app.use("/api/v1/business/product-posts/comments",         Business_Post_Comment_Router);
 app.use("/api/v1/business/product-posts/comments/replies", Business_Post_Comment_Reply_Router);
 app.use("/api/v1/business/products-posts/bookmarks",       Business_Post_Bookmark_Router);
 
@@ -293,31 +293,30 @@ app.use("/api/v1/userlocation", User_Location_Router);
 app.use("/api/v1/recommendations/events", Recomendation_Events_Router);
 
 // -- Public APIs (uncomment when route files are created)
-// app.use("/api/v1/public/randomusers",    Random_User_Router);
-// app.use("/api/v1/public/randomproducts", Random_Product_Router);
-// app.use("/api/v1/public/randomjokes",    Random_Joke_Router);
-// app.use("/api/v1/public/books",          Book_Router);
-// app.use("/api/v1/public/quotes",         Quote_Router);
-// app.use("/api/v1/public/meals",          Meal_Router);
-// app.use("/api/v1/public/dogs",           Dog_Router);
-// app.use("/api/v1/public/cats",           Cat_Router);
-// app.use("/api/v1/public/youtube",        Youtube_Router);
+app.use("/api/v1/public/randomusers",    Random_User_Router);
+app.use("/api/v1/public/randomproducts", Random_Product_Router);
+app.use("/api/v1/public/randomjokes",    Random_Joke_Router);
+app.use("/api/v1/public/books",          Book_Router);
+app.use("/api/v1/public/quotes",         Quote_Router);
+app.use("/api/v1/public/meals",          Meal_Router);
+app.use("/api/v1/public/dogs",           Dog_Router);
+app.use("/api/v1/public/cats",           Cat_Router);
+app.use("/api/v1/public/youtube",        Youtube_Router);
 
 // --  Sink (uncomment when route files are created)
-app.use("/api/v1/sink/http-methods", Http_Method_Router);
+app.use("/api/v1/sink/http-methods", HTTP_Method_Router);
 app.use("/api/v1/sink/status-codes", Status_Code_Router);
 app.use("/api/v1/sink/request",      Request_Inspection_Router);
 app.use("/api/v1/sink/response",     Response_Inspection_Router);
-app.use("/api/v1/sink/cookies",      Cookie_Router);
+app.use("/api/v1/sink/cookies",      Cookies_Router);
 app.use("/api/v1/sink/redirect",     Redirect_Router);
-app.use("/api/v1/sink/image",        Image_Router);
+app.use("/api/v1/sink/image",        Images_Router);
 
 // -- Seeding (uncomment when seed files are created)
-// app.get("/api/v1/seed/generated-credentials", getGeneratedCredentials);
-// app.post("/api/v1/seed/todos",        seedTodos);
-// app.post("/api/v1/seed/ecommerce",    seedUsers, seedEcommerce);
-// app.post("/api/v1/seed/social-media", seedUsers, seedSocialMedia);
-// app.post("/api/v1/seed/chat-app",     seedUsers, seedChatApp);
+app.get("/api/v1/seed/generated-credentials", getGeneratedCredentials);
+app.post("/api/v1/seed/ecommerce",    seedUsers, seedEcommerce);
+app.post("/api/v1/seed/social-media", seedUsers, seedSocialMedia);
+app.post("/api/v1/seed/chat-app",     seedUsers, seedChatApp);
 
 // ============================================================
 // SOCKET.IO INITIALIZATION
