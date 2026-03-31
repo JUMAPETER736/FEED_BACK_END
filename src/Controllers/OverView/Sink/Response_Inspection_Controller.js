@@ -1,5 +1,6 @@
-import { ApiResponse } from "../../utils/ApiResponse.js";
-import { asyncHandler } from "../../utils/asyncHandler.js";
+
+import { ApiResponse }  from "../../Utils/API_Response.js";
+import { asyncHandler } from "../../Utils/Async_Handler.js";
 
 const getResponseHeaders = asyncHandler(async (req, res) => {
   res.set({

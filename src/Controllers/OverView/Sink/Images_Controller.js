@@ -1,6 +1,8 @@
 
 
-import { asyncHandler } from "../../utils/asyncHandler.js";
+
+import { ApiResponse }  from "../../Utils/API_Response.js";
+import { asyncHandler } from "../../Utils/Async_Handler.js";
 
 const sendJpegImage = asyncHandler(async (req, res) => {
   return res.status(200).sendFile("/public/assets/images/ken_thompson.jpeg", {

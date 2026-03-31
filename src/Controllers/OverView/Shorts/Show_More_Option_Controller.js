@@ -1,19 +1,12 @@
 
 
 import mongoose from "mongoose";
-import { asyncHandler } from "../../../utils/asyncHandler.js";
-import { ApiError } from "../../../utils/ApiError.js";
-import { ApiResponse } from "../../../utils/ApiResponse.js";
-
-import {
-  SocialCloseFriends,
-  SocialMutedPosts,
-  SocialMutedStories,
-  SocialFavorites,
-  SocialRestricted
-} from "../../../models/apps/social-media/userFollowingShowMoreOptions.models.js";
-import { SocialProfile } from "../../../models/apps/social-media/profile.models.js";
-import { User } from "../../../models/apps/auth/user.models.js";
+import { User }          from "../../../Models/Aunthentication/User_Model.js";
+import { SocialProfile } from "../../../Models/Shorts/Profile_Model.js";
+import { SocialCloseFriends, SocialMutedPosts, SocialMutedStories, SocialFavorites, SocialRestricted } from "../../../Models/Shorts/User_Following_Show_More_Options_Model.js";
+import { ApiError }    from "../../../Utils/API_Errors.js";
+import { ApiResponse } from "../../../Utils/API_Response.js";
+import { asyncHandler } from "../../../Utils/Async_Handler.js";
 
 /* ==================== HELPERS ==================== */
 const validateUserId = (userId) => {

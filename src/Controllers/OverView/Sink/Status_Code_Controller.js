@@ -1,7 +1,6 @@
-import { asyncHandler } from "../../utils/asyncHandler.js";
-import statusCodesJson from "../../json/status-codes.json" assert { type: "json" };
-import { ApiError } from "../../utils/ApiError.js";
-import { ApiResponse } from "../../utils/ApiResponse.js";
+
+import { ApiResponse }  from "../../Utils/API_Response.js";
+import { asyncHandler } from "../../Utils/Async_Handler.js";
 
 /**
  * @description status codes which are avoiding sending response due to their nature
