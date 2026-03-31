@@ -1,15 +1,17 @@
-import { BusinessProfile } from "../../../models/apps/business/business.profile.model.js";
+
+
 import { validationResult } from "express-validator";
+import { BusinessProfile }   from "../../../Models/Business/Business_Profile_Model.js";
+import { BusinessCatalogue } from "../../../Models/Business/Business_Catalogue_Model.js";
+import { ApiError }     from "../../../Utils/API_Errors.js";
+import { ApiResponse }  from "../../../Utils/API_Response.js";
+import { asyncHandler } from "../../../Utils/Async_Handler.js";
 import {
   getStaticBusinessBackgroundImagePath,
   getBusinessBackgroundImageLocalPath,
   getStaticBusinessBackgroundVideoPath,
   getStaticVideoThumbnailPath,
-} from "../../../utils/helpers.js";
-import { asyncHandler } from "../../../utils/asyncHandler.js";
-import { BusinessCatalogue } from "../../../models/apps/business/business.catalogue.model.js";
-import { ApiError } from "../../../utils/ApiError.js";
-import { ApiResponse } from "../../../utils/ApiResponse.js";
+} from "../../../Utils/Helpers.js";
 
 // Create or update a user's business profile
 export const upsertBusinessProfile = async (req, res) => {

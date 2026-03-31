@@ -1,8 +1,11 @@
-import { Address } from "../../../models/apps/ecommerce/address.models.js";
-import { ApiError } from "../../../utils/ApiError.js";
-import { ApiResponse } from "../../../utils/ApiResponse.js";
-import { asyncHandler } from "../../../utils/asyncHandler.js";
-import { getMongoosePaginationOptions } from "../../../utils/helpers.js";
+
+
+import { Address }     from "../../../Models/Ecommerce/Address_Model.js";
+import { ApiError }    from "../../../Utils/API_Errors.js";
+import { ApiResponse } from "../../../Utils/API_Response.js";
+import { asyncHandler } from "../../../Utils/Async_Handler.js";
+import { getMongoosePaginationOptions } from "../../../Utils/Helpers.js";
+
 
 const createAddress = asyncHandler(async (req, res) => {
   const { addressLine1, addressLine2, pincode, city, state, country } =
