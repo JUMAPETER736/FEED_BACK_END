@@ -1,0 +1,71 @@
+
+
+
+import { faker } from "@faker-js/faker";
+import { User } from "../models/apps/auth/user.models.js";
+import { SocialBookmark } from "../models/apps/social-media/bookmark.models.js";
+import { SocialComment } from "../models/apps/social-media/comment.models.js";
+import { SocialFollow } from "../models/apps/social-media/follow.models.js";
+import { SocialLike } from "../models/apps/social-media/like.models.js";
+import { SocialPost } from "../models/apps/social-media/post.models.js";
+import { SocialProfile } from "../models/apps/social-media/profile.models.js";
+import { ApiResponse } from "../utils/ApiResponse.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import { getRandomNumber } from "../utils/helpers.js";
+import {
+  SOCIAL_BOOKMARKS_COUNT,
+  SOCIAL_COMMENTS_COUNT,
+  SOCIAL_FOLLOWS_COUNT,
+  SOCIAL_LIKES_COUNT,
+  SOCIAL_POSTS_COUNT,
+  SOCIAL_POST_IMAGES_COUNT,
+} from "./_constants.js";
+
+
+
+// generate random posts
+const posts = new Array(SOCIAL_POSTS_COUNT).fill("_").map(() => {
+  return {
+    content: faker.lorem.lines({ min: 2, max: 5 }),
+    tags: faker.lorem.words({ min: 3, max: 8 }).split(" "),
+    images: new Array(SOCIAL_POST_IMAGES_COUNT).fill("_").map(() => {
+      return {
+        url: faker.image.urlLoremFlickr({
+          category: "food",
+        }),
+        localPath: "",
+      };
+    }),
+  };
+});
+
+// generate random comments
+const comments = new Array(SOCIAL_COMMENTS_COUNT).fill("_").map(() => {
+  return {
+    content: faker.lorem.lines({
+      min: 1,
+      max: 10,
+    }),
+  };
+});
+
+const seedSocialProfiles = async () => {
+  const profiles = await SocialProfile.find(); // Social profile is being created while user is created
+  const profileUpdatePromise = profiles.map(async (profile) => {
+    await SocialProfile.findByIdAndUpdate(profile._id, {
+      // find profile and insert random data there
+      $set: {
+        firstName: faker.person.firstName(),
+        lastName: faker.person.lastName(),
+        bio: faker.person.bio(),
+        dob: faker.date.past({
+          years: 18,
+        }),
+        location: `${faker.location.city()}, ${faker.location.country()}`,
+        countryCode: "+91",
+        phoneNumber: faker.phone.number("9#########"),
+      },
+    });
+  });
+  await Promise.all(profileUpdatePromise); // resolve all promises
+};

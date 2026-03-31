@@ -220,11 +220,10 @@ import Status_Code_Router         from "./Routes/Sink/Status_Code_Routes.js";
 // NOTE: No Seeds folder found in your repo.
 // Comment these out until you create the seed files.
 // ============================================================
-// import { seedChatApp }                        from "./Seeds/Chat-App.Seeds.js";
-// import { seedEcommerce }                      from "./Seeds/Ecommerce.Seeds.js";
-// import { seedSocialMedia }                    from "./Seeds/Social-Media.Seeds.js";
-// import { seedTodos }                          from "./Seeds/Todo.Seeds.js";
-// import { getGeneratedCredentials, seedUsers } from "./Seeds/User.Seeds.js";
+import { seedChatApp }                        from "./Seeds/Chat_Seeds.js";
+import { seedEcommerce }                      from "./Seeds/Ecommerce_Seeds.js";
+import { seedSocialMedia }                    from "./Seeds/Shorts.Seeds.js";
+import { getGeneratedCredentials, seedUsers } from "./Seeds/User_Seeds.js";
 
 // ============================================================
 // ROUTE MOUNTING
