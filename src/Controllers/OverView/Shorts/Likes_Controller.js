@@ -2,16 +2,17 @@
 
 
 import mongoose from "mongoose";
-import { SocialComment } from "../../../models/apps/social-media/comment.models.js";
-import { SocialCommentReply } from "../../../models/apps/social-media/comment.reply.models.js";
-import { SocialLike } from "../../../models/apps/social-media/like.models.js";
-import { SocialPost } from "../../../models/apps/social-media/post.models.js";
-import { emitSocketEvent } from "../../../socket/index.js";
-import { ApiError } from "../../../utils/ApiError.js";
-import { emitUnreadCountUpdate } from "../../../socket/socket.js";
-import { ApiResponse } from "../../../utils/ApiResponse.js";
-import { asyncHandler } from "../../../utils/asyncHandler.js";
-import UnifiedNotification from "../../../models/apps/notifications/unified.notification.model.js";
+import { SocialComment }      from "../../../Models/Shorts/Comment_Model.js";
+import { SocialCommentReply } from "../../../Models/Shorts/Comment_Reply_Model.js";
+import { SocialLike }         from "../../../Models/Shorts/Like_Model.js";
+import { SocialPost }         from "../../../Models/Shorts/Post_Model.js";
+import UnifiedNotification from "../../../Models/Notifications/Unified_Notification_Model.js";
+import { emitSocketEvent }       from "../../../Sockets/index.js";
+import { emitUnreadCountUpdate } from "../../../Sockets/socket.js";
+import { ApiError }    from "../../../Utils/API_Errors.js";
+import { ApiResponse } from "../../../Utils/API_Response.js";
+import { asyncHandler } from "../../../Utils/Async_Handler.js";
+
 
 // ── Shared aggregation to enrich a notification with sender details ───────────
 const unifiedNotificationCommonAggregation = () => [

@@ -1,12 +1,12 @@
 
 
 import mongoose from "mongoose";
-import { emitSocketEvent } from "../../../socket/index.js";
-import { ApiError } from "../../../utils/ApiError.js";
-import { ApiResponse } from "../../../utils/ApiResponse.js";
-import { asyncHandler } from "../../../utils/asyncHandler.js";
-import UnifiedNotification from "../../../models/apps/notifications/unified.notification.model.js"
-import { User } from "../../../models/apps/auth/user.models.js";
+import { User }            from "../../../Models/Aunthentication/User_Model.js";
+import UnifiedNotification from "../../../Models/Notifications/Unified_Notification_Model.js";
+import { emitSocketEvent } from "../../../Sockets/index.js";
+import { ApiError }    from "../../../Utils/API_Errors.js";
+import { ApiResponse } from "../../../Utils/API_Response.js";
+import { asyncHandler } from "../../../Utils/Async_Handler.js";;
 //  * Create a friend suggestion notification
 //  * @param {import("express").Request} req
 //  * @param {import("express").Response} res

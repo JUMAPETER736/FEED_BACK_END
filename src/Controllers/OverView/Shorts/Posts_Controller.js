@@ -1,27 +1,25 @@
 import mongoose from "mongoose";
-import { MAXIMUM_SOCIAL_POST_IMAGE_COUNT } from "../../../constants.js";
-import { User } from "../../../models/apps/auth/user.models.js";
-import { SocialBookmark } from "../../../models/apps/social-media/bookmark.models.js";
-import { SocialPost } from "../../../models/apps/social-media/post.models.js";
-import { ApiError } from "../../../utils/ApiError.js";
-import { ApiResponse } from "../../../utils/ApiResponse.js";
-import { SocialFollow } from "../../../models/apps/social-media/follow.models.js";
-import { asyncHandler } from "../../../utils/asyncHandler.js";
-import { SocialProfile } from "../../../models/apps/social-media/profile.models.js";
-import { SocialLike } from "../../../models/apps/social-media/like.models.js";
-import { SocialComment } from "../../../models/apps/social-media/comment.models.js";
-import { getShotsRecommendations } from "../../../services/recommendation.system.service.js";
-
+import { MAXIMUM_SOCIAL_POST_IMAGE_COUNT } from "../../../Constants.js";
+import { User }           from "../../../Models/Aunthentication/User_Model.js";
+import { SocialBookmark } from "../../../Models/Shorts/Bookmark_Model.js";
+import { SocialComment }  from "../../../Models/Shorts/Comment_Model.js";
+import { SocialFollow }   from "../../../Models/Shorts/Follow_Model.js";
+import { SocialLike }     from "../../../Models/Shorts/Like_Model.js";
+import { SocialPost }     from "../../../Models/Shorts/Post_Model.js";
+import { SocialProfile }  from "../../../Models/Shorts/Profile_Model.js";
+import UnifiedNotification from "../../../Models/Notifications/Unified_Notification_Model.js";
+import { ApiError }    from "../../../Utils/API_Errors.js";
+import { ApiResponse } from "../../../Utils/API_Response.js";
+import { asyncHandler } from "../../../Utils/Async_Handler.js";
+import { getShotsRecommendations } from "../../../Services/Recommendation_System_Service.js";
 import {
   getLocalPath,
-  getMongoosePaginationOptions,
   getStaticFilePath,
   getThumbnailLocalPath,
   getStaticThumbnailFilePath,
+  getMongoosePaginationOptions,
   removeLocalFile,
-} from "../../../utils/helpers.js";
-import UnifiedNotification from "../../../models/apps/notifications/unified.notification.model.js";
-
+} from "../../../Utils/Helpers.js";
 //  Shorts-only match filter
 const SHORTS_MATCH = {
   feedShortsBusinessId: { $exists: true, $ne: null, $ne: "" },
