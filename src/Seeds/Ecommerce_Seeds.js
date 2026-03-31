@@ -99,3 +99,57 @@ const products = new Array(PRODUCTS_COUNT).fill("_").map(() => {
   };
 });
 
+
+
+const orders = new Array(ORDERS_COUNT).fill("_").map(() => {
+  const paymentProvider =
+    AvailablePaymentProviders[
+      getRandomNumber(AvailablePaymentProviders.length)
+    ];
+  return {
+    // Add other fields which are connected to other models later
+    status:
+      AvailableOrderStatuses[getRandomNumber(AvailableOrderStatuses.length)],
+    paymentProvider: paymentProvider === "UNKNOWN" ? "PAYPAL" : paymentProvider, // Avoid setting UNKNOWN payment provider
+    paymentId: faker.string.alphanumeric({
+      casing: "mixed",
+      length: 24,
+    }),
+    isPaymentDone: true,
+  };
+});
+
+const seedEcomProfiles = async () => {
+  const profiles = await EcomProfile.find();
+  const ecomProfileUpdatePromise = profiles.map(async (profile) => {
+    await EcomProfile.findByIdAndUpdate(profile._id, {
+      $set: {
+        firstName: faker.person.firstName(),
+        lastName: faker.person.lastName(),
+        countryCode: "+91",
+        phoneNumber: faker.phone.number("9#########"),
+      },
+    });
+  });
+  await Promise.all(ecomProfileUpdatePromise);
+};
+
+const seedEcomCategories = async (owner) => {
+  await Category.deleteMany({});
+  await Category.insertMany(
+    categories.map((cat) => ({ ...cat, owner: owner }))
+  );
+};
+
+const seedEcomAddresses = async () => {
+  const users = await User.find();
+  await Address.deleteMany({});
+  await Address.insertMany(
+    addresses.map((add, i) => {
+      return {
+        ...add,
+        owner: users[i] ?? users[getRandomNumber(users.length)], // set address to every user and then set random user as a owner
+      };
+    })
+  );
+};
