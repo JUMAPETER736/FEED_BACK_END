@@ -11,7 +11,7 @@ import { SocialPost } from "../models/apps/social-media/post.models.js";
 import { SocialProfile } from "../models/apps/social-media/profile.models.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { getRandomNumber } from "../utils/helpers.js";
+import { getRandomNumber } from "../Utils/Helpers.js";
 import {
   SOCIAL_BOOKMARKS_COUNT,
   SOCIAL_COMMENTS_COUNT,
@@ -69,3 +69,59 @@ const seedSocialProfiles = async () => {
   });
   await Promise.all(profileUpdatePromise); // resolve all promises
 };
+
+
+const seedSocialPosts = async () => {
+  await SocialPost.deleteMany({});
+  const users = await User.find();
+  await SocialPost.insertMany(
+    posts.map((post, i) => {
+      return {
+        ...post,
+        author: users[i] ?? users[getRandomNumber(users.length)], // set post to every user and then set random user as an author
+      };
+    })
+  );
+};
+
+const seedSocialComments = async () => {
+  await SocialComment.deleteMany({});
+  const authors = await User.find();
+  const posts = await SocialPost.find();
+  await SocialComment.insertMany(
+    comments.map((comment) => {
+      return {
+        ...comment,
+        author: authors[getRandomNumber(authors.length)],
+        postId: posts[getRandomNumber(posts.length)],
+      };
+    })
+  );
+};
+
+const seedSocialLikes = async () => {
+  await SocialLike.deleteMany({});
+  const users = await User.find();
+  const posts = await SocialPost.find();
+  const comments = await SocialComment.find();
+  // Post likes documents
+  const socialPostsLikesPromise = new Array(SOCIAL_LIKES_COUNT)
+    .fill("_")
+    .map(async () => {
+      const likedBy = users[getRandomNumber(users.length)];
+      const post = posts[getRandomNumber(posts.length)];
+
+      await SocialLike.findOneAndUpdate(
+        {
+          postId: post._id,
+          likedBy: likedBy._id,
+        },
+        {
+          $set: {
+            postId: post._id,
+            likedBy: likedBy._id,
+          },
+        },
+        { upsert: true } // We don't want duplicate entries of the like. So if found then update else insert
+      );
+    });
