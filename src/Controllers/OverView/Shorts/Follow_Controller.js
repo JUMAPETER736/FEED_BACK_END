@@ -1,23 +1,20 @@
 
 
 import mongoose from "mongoose";
-import { User } from "../../../models/apps/auth/user.models.js";
-import { SocialFollow } from "../../../models/apps/social-media/follow.models.js";
-import { ApiError } from "../../../utils/ApiError.js";
-import { ApiResponse } from "../../../utils/ApiResponse.js";
-import { asyncHandler } from "../../../utils/asyncHandler.js";
-import { getMongoosePaginationOptions } from "../../../utils/helpers.js";
-import UnifiedNotification from "../../../models/apps/notifications/unified.notification.model.js";
-import { emitSocketEvent } from "../../../socket/index.js";
-import { unifiedNotificationCommonAggregation } from "../../../aggregations/unifiedNotifications.js";
-import { unifiedUserCommonAggregation } from "../../../aggregations/userAggregation.js";
-import { followersAggregation } from "../../../aggregations/followerAggregation.js";
-import { unifiedFollowingListAggregation } from "../../../aggregations/followingListAggregation.js";
-import { unifiedFollowingAggregation } from "../../../aggregations/followingAggregation.js";
-import { emitUnreadCountUpdate } from "../../../socket/socket.js";
-/** aggregation addded here */
-
-
+import { User }         from "../../../Models/Aunthentication/User_Model.js";
+import { SocialFollow } from "../../../Models/Shorts/Follow_Model.js";
+import UnifiedNotification from "../../../Models/Notifications/Unified_Notification_Model.js";
+import { followersAggregation }          from "../../../Aggregations/Followers.js";
+import { unifiedFollowingAggregation }   from "../../../Aggregations/Following.js";
+import { unifiedFollowingListAggregation } from "../../../Aggregations/Following_List.js";
+import { unifiedNotificationCommonAggregation } from "../../../Aggregations/Notifications.js";
+import { unifiedUserCommonAggregation }  from "../../../Aggregations/Users.js";
+import { emitSocketEvent }       from "../../../Sockets/index.js";
+import { emitUnreadCountUpdate } from "../../../Sockets/socket.js";
+import { ApiError }    from "../../../Utils/API_Errors.js";
+import { ApiResponse } from "../../../Utils/API_Response.js";
+import { asyncHandler } from "../../../Utils/Async_Handler.js";
+import { getMongoosePaginationOptions } from "../../../Utils/Helpers.js";
 
 const followUnFollowUser = asyncHandler(async (req, res) => {
   const { toBeFollowedUserId } = req.params;

@@ -1,14 +1,14 @@
 
 
 import mongoose from "mongoose";
-import { SocialComment } from "../../../models/apps/social-media/comment.models.js";
-import { ApiResponse } from "../../../utils/ApiResponse.js";
-import { asyncHandler } from "../../../utils/asyncHandler.js";
-import { getMongoosePaginationOptions } from "../../../utils/helpers.js";
-import { ApiError } from "../../../utils/ApiError.js";
-import {User} from "../../../models/apps/auth/user.models.js";
+import { User }          from "../../../Models/Aunthentication/User_Model.js";
+import { SocialComment } from "../../../Models/Shorts/Comment_Model.js";
+import { emitSocketEvent } from "../../../Sockets/index.js";
+import { ApiError }    from "../../../Utils/API_Errors.js";
+import { ApiResponse } from "../../../Utils/API_Response.js";
+import { asyncHandler } from "../../../Utils/Async_Handler.js";
+import { getMongoosePaginationOptions } from "../../../Utils/Helpers.js";
 
-import { emitSocketEvent } from "../../../socket/index.js";
 // import CommentNotification from "../../../models/apps/notifications/commentNotification.model.js"
 /**
  * @param {string} userId

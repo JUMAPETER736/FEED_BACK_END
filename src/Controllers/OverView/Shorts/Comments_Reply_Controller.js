@@ -1,11 +1,18 @@
 
 
 import mongoose from "mongoose";
-import { ApiResponse } from "../../../utils/ApiResponse.js";
-import { asyncHandler } from "../../../utils/asyncHandler.js";
-import { getMongoosePaginationOptions } from "../../../utils/helpers.js";
-import { ApiError } from "../../../utils/ApiError.js";
-import { SocialCommentReply } from "../../../models/apps/social-media/comment.reply.models.js";
+import { User }               from "../../../Models/Aunthentication/User_Model.js";
+import { SocialComment }      from "../../../Models/Shorts/Comment_Model.js";
+import { SocialCommentReply } from "../../../Models/Shorts/Comment_Reply_Model.js";
+import { SocialPost }         from "../../../Models/Shorts/Post_Model.js";
+import Notification        from "../../../Models/Notifications/Notification_Model.js";
+import ReplyNotification   from "../../../Models/Notifications/Reply_Notification_Model.js";
+import UnifiedNotification from "../../../Models/Notifications/Unified_Notification_Model.js";
+import { emitSocketEvent }       from "../../../Sockets/index.js";
+import { emitUnreadCountUpdate } from "../../../Sockets/socket.js";
+import { ApiError }    from "../../../Utils/API_Errors.js";
+import { ApiResponse } from "../../../Utils/API_Response.js";
+import { asyncHandler } from "../../../Utils/Async_Handler.js";
 import {
   getCommentImageLocalPath,
   getStaticCommentImageFilePath,
@@ -17,20 +24,13 @@ import {
   getStaticCommentThumbnailFilePath,
   getCommentGifLocalPath,
   getStaticCommentGifFilePath,
-  getStaticCommentVideoFilePath,
   getCommentVideoLocalPath,
+  getStaticCommentVideoFilePath,
+  getMongoosePaginationOptions,
   removeLocalFile,
-} from "../../../utils/helpers.js";
-// import { SocialPost } from "../../../models/apps/social-media/post.models.js";
-import { emitSocketEvent } from "../../../socket/index.js";
-import { User } from "../../../models/apps/auth/user.models.js";
-import { SocialPost } from "../../../models/apps/social-media/post.models.js";
+} from "../../../Utils/Helpers.js";
 
-import { SocialComment } from "../../../models/apps/social-media/comment.models.js";// import CommentNotification from "../../../models/apps/notifications/commentNotification.model.js";
-import ReplyNotification from "../../../models/apps/notifications/replyNotification.model.js";
-import UnifiedNotification from "../../../models/apps/notifications/unified.notification.model.js";
-import Notification from "../../../models/apps/notifications/notification.model.js";
-import { emitUnreadCountUpdate } from "../../../socket/socket.js";
+
 /**
  * @param {string} userId
  * @param {import("express").Request} req
