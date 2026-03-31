@@ -153,3 +153,78 @@ const seedEcomAddresses = async () => {
     })
   );
 };
+
+
+
+const seedEcomCoupons = async (owner) => {
+  await Coupon.deleteMany({});
+  await Coupon.insertMany(
+    coupons.map((coupon) => ({ ...coupon, owner: owner }))
+  );
+};
+
+const seedEcomProducts = async () => {
+  const users = await User.find();
+  const categories = await Category.find();
+
+  await Product.deleteMany({});
+  await Product.insertMany(
+    products.map((product) => ({
+      ...product,
+      owner: users[getRandomNumber(users.length)], // set random user as a owner
+      category: categories[getRandomNumber(categories.length)], // set random category
+    }))
+  );
+};
+
+const seedEcomOrders = async () => {
+  const customers = await User.find();
+  const coupons = await Coupon.find();
+  const products = await Product.find();
+  const addresses = await Address.find();
+
+  /**
+   * @type {{orderItems: {productId: string; quantity: number}[], orderPrice: number, discountedOrderPrice: number; coupon: Coupon | null}[]}
+   * @description this variable holds array of random order items array, coupon, calculated total and discounted price
+   */
+  const orderPayload = new Array(ORDERS_RANDOM_ITEMS_COUNT)
+    .fill("_")
+    .map(() => {
+      const totalOrderProducts = getRandomNumber(5); // get total products to be included in the order items
+
+      // map through the available products
+      const orderItems = products
+        .slice(0, totalOrderProducts > 1 ? totalOrderProducts : 2) // We need at least 1 product in the items array
+        .map((prod) => ({
+          productId: prod._id, // this field we need to add while creating the order
+          quantity: +faker.commerce.price({ dec: 0, min: 1, max: 5 }), // this field we need to add while creating the order
+          price: prod.price, // this field we need to calculate total order price
+        }));
+
+      // calculate total order price based on product price and it's quantity
+      const orderPrice = orderItems.reduce(
+        (prev, curr) => prev + curr.price * curr.quantity,
+        0
+      );
+
+      // Randomly assign or ignore coupon
+      // If we find any coupon we set it, if the index is out of range (we are intentionally adding 20 to the length) we keep coupon null
+      let coupon = coupons[getRandomNumber(coupons.length + 20)] ?? null;
+      let discountedOrderPrice = orderPrice; // by default discountedOrderPrice is orderPrice if there is no coupon
+      if (coupon && coupon.minimumCartValue <= orderPrice) {
+        // Check if there is coupon selected and the minimumCartValue is less than current order price
+        discountedOrderPrice -= coupon.discountValue;
+      } else {
+        coupon = null;
+      }
+      // return the required metadata
+      return {
+        orderItems: orderItems.map((prod) => ({
+          productId: prod.productId,
+          quantity: prod.quantity,
+        })),
+        orderPrice,
+        discountedOrderPrice,
+        coupon,
+      };
+    });
