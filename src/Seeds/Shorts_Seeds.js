@@ -125,3 +125,63 @@ const seedSocialLikes = async () => {
         { upsert: true } // We don't want duplicate entries of the like. So if found then update else insert
       );
     });
+
+
+    // Comment likes documents
+  const socialCommentsLikesPromise = new Array(SOCIAL_LIKES_COUNT)
+    .fill("_")
+    .map(async () => {
+      const likedBy = users[getRandomNumber(users.length)];
+      const comment = comments[getRandomNumber(comments.length)];
+
+      await SocialLike.findOneAndUpdate(
+        {
+          commentId: comment._id,
+          likedBy: likedBy._id,
+        },
+        {
+          $set: {
+            commentId: comment._id,
+            likedBy: likedBy._id,
+          },
+        },
+        { upsert: true } // We don't want duplicate entries of the like. So if found then update else insert
+      );
+    });
+  await Promise.all([
+    ...socialPostsLikesPromise,
+    ...socialCommentsLikesPromise,
+  ]);
+};
+
+const seedSocialFollowers = async () => {
+  await SocialFollow.deleteMany({});
+  const users = await User.find();
+  const socialFollowerPromise = new Array(SOCIAL_FOLLOWS_COUNT)
+    .fill("_")
+    .map(async () => {
+      let followerIndex = getRandomNumber(users.length); // generate a random index for the follower
+      let followeeIndex = getRandomNumber(users.length); // generate a random index for the followee
+      if (followeeIndex === followerIndex) {
+        // This shows that both follower and followee are the same
+        followerIndex <= 0 ? followerIndex++ : followerIndex--; // avoid same follower and followee
+      }
+      const follower = users[followerIndex]; // get the follower
+      const followee = users[followeeIndex]; // get the followee
+
+      await SocialFollow.findOneAndUpdate(
+        {
+          followerId: follower._id,
+          followeeId: followee._id,
+        },
+        {
+          $set: {
+            followerId: follower._id,
+            followeeId: followee._id,
+          },
+        },
+        { upsert: true } // We don't want duplicate entries of the follows. So if found then update else insert
+      );
+    });
+  await Promise.all(socialFollowerPromise);
+};
