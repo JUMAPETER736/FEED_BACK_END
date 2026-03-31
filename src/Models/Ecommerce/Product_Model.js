@@ -1,6 +1,6 @@
 import mongoose, { Schema } from "mongoose";
-import { User } from "../auth/user.models.js";
-import { Category } from "./category.models.js";
+import { User }     from "../Aunthentication/User_Model.js";
+import { Category } from "./Category_Model.js";
 import mongooseAggregatePaginate from "mongoose-aggregate-paginate-v2";
 
 const productSchema = new Schema(
