@@ -1,18 +1,17 @@
 
 
 import mongoose from "mongoose";
-import { MAXIMUM_SOCIAL_POST_IMAGE_COUNT } from "../../../constants.js";
-import { User } from "../../../models/apps/auth/user.models.js";
-import { FeedBookmark } from "../../../models/apps/feed/feed_bookmark.models.js";
-import { FeedPost } from "../../../models/apps/feed/feed.model.js";
-import { FeedFollowUnfollow } from "../../../models/apps/feed/feed_followUnfollow.models.js";
-import { ApiError } from "../../../utils/ApiError.js";
-import { ApiResponse } from "../../../utils/ApiResponse.js";
-import { SocialFollow } from "../../../models/apps/social-media/follow.models.js";
-import { FeedFollow } from "../../../models/apps/feed/feed_follow.models.js";
-import { asyncHandler } from "../../../utils/asyncHandler.js";
-import { getFeedRecommendations } from "../../../services/recommendation.system.service.js";
-
+import { MAXIMUM_SOCIAL_POST_IMAGE_COUNT } from "../../../Constants.js";
+import { User }               from "../../../Models/Aunthentication/User_Model.js";
+import { FeedBookmark }       from "../../../Models/Feed/Feed_Bookmark_Model.js";
+import { FeedFollow }         from "../../../Models/Feed/Feed_Follow_Model.js";
+import { FeedFollowUnfollow } from "../../../Models/Feed/Feed_Follow_Unfollow_Model.js";
+import { FeedPost }           from "../../../Models/Feed/Feed_Model.js";
+import { SocialFollow }       from "../../../Models/Shorts/Follow_Model.js";
+import { ApiError }    from "../../../Utils/API_Errors.js";
+import { ApiResponse } from "../../../Utils/API_Response.js";
+import { asyncHandler } from "../../../Utils/Async_Handler.js";
+import { getFeedRecommendations } from "../../../Services/Recommendation_System_Service.js";
 
 
 
