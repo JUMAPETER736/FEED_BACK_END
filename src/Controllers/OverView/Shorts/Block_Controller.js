@@ -1,12 +1,11 @@
 
-
 import mongoose from "mongoose";
-import { SocialBlock } from "../../../models/apps/social-media/block.models.js";
-import { User } from "../../../models/apps/auth/user.models.js";
-import { ApiError } from "../../../utils/ApiError.js";
-import { ApiResponse } from "../../../utils/ApiResponse.js";
-import { asyncHandler } from "../../../utils/asyncHandler.js";
-import { getMongoosePaginationOptions } from "../../../utils/helpers.js";
+import { User }        from "../../../Models/Aunthentication/User_Model.js";
+import { SocialBlock } from "../../../Models/Shorts/Block_Model.js";
+import { ApiError }    from "../../../Utils/API_Errors.js";
+import { ApiResponse } from "../../../Utils/API_Response.js";
+import { asyncHandler } from "../../../Utils/Async_Handler.js";
+import { getMongoosePaginationOptions } from "../../../Utils/Helpers.js";
 
 // Block user
 const blockUser = asyncHandler(async (req, res) => {

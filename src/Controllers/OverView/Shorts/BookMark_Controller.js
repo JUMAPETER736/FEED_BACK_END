@@ -2,12 +2,12 @@
 
 
 import mongoose from "mongoose";
-import { SocialBookmark } from "../../../models/apps/social-media/bookmark.models.js";
-import { SocialPost } from "../../../models/apps/social-media/post.models.js";
-import { ApiError } from "../../../utils/ApiError.js";
-import { ApiResponse } from "../../../utils/ApiResponse.js";
-import { asyncHandler } from "../../../utils/asyncHandler.js";
-import { getMongoosePaginationOptions } from "../../../utils/helpers.js";
+import { SocialBookmark } from "../../../Models/Shorts/Bookmark_Model.js";
+import { SocialPost }     from "../../../Models/Shorts/Post_Model.js";
+import { ApiError }    from "../../../Utils/API_Errors.js";
+import { ApiResponse } from "../../../Utils/API_Response.js";
+import { asyncHandler } from "../../../Utils/Async_Handler.js";
+import { getMongoosePaginationOptions } from "../../../Utils/Helpers.js";
 
 const toggleBookmark = asyncHandler(async (req, res) => {
   const { postId } = req.params;
