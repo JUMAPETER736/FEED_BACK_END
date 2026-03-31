@@ -228,3 +228,53 @@ const seedEcomOrders = async () => {
         coupon,
       };
     });
+
+
+    await EcomOrder.deleteMany({});
+  await EcomOrder.insertMany(
+    orders.map((order) => {
+      const customer = customers[getRandomNumber(customers.length)];
+      const orderInstance = orderPayload[getRandomNumber(orderPayload.length)]; // pick any random order instance to include
+      return {
+        ...order,
+        customer, // set random user as a customer
+        address:
+          // Find address which is of order's customer
+          // In rare cases if it does not exist. Select a random one
+          addresses.find(
+            (add) => add.owner?.toString() === customer?._id.toString()
+          )?._id ?? addresses[getRandomNumber(addresses.length)],
+        items: orderInstance.orderItems, // set order items
+        coupon: orderInstance.coupon,
+        orderPrice: orderInstance.orderPrice,
+        discountedOrderPrice: orderInstance.discountedOrderPrice,
+      };
+    })
+  );
+};
+
+const seedEcommerce = asyncHandler(async (req, res) => {
+  const owner = await User.findOne({
+    role: UserRolesEnum.ADMIN,
+  });
+
+  if (!owner) {
+    throw new ApiError(
+      500,
+      "Something went wrong while seeding the data. Please try again once"
+    );
+  }
+  await seedEcomProfiles();
+  await seedEcomCategories(owner._id);
+  await seedEcomAddresses();
+  await seedEcomCoupons(owner._id);
+  await seedEcomProducts();
+  await seedEcomOrders();
+  return res
+    .status(201)
+    .json(
+      new ApiResponse(201, {}, "Database populated for ecommerce successfully")
+    );
+});
+
+export { seedEcommerce };
