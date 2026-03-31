@@ -1,12 +1,32 @@
+// ============================================================
+// THIRD-PARTY / CORE DEPENDENCIES
+// ============================================================
 import mongoose from "mongoose";
-import { BusinessComment } from "../../../../models/apps/business/businesspost/business.comment.post.model.js";
-import { ApiResponse } from "../../../../utils/ApiResponse.js";
-import { asyncHandler } from "../../../../utils/asyncHandler.js";
-import { emitSocketEvent } from "../../../../socket/index.js";
-import { emitUnreadCountUpdate } from "../../../../socket/socket.js";
-import { BusinessNotification } from "../../../../models/apps/business/businesspost/notification/business.notification.model.js";
-import { BusinessProduct } from "../../../../models/apps/business/business.product.model.js";
-import { BusinessCommentReply } from "../../../../models/apps/business/businesspost/business.comment.reply.model.js";
+
+// ============================================================
+// MODELS
+// ============================================================
+import { BusinessComment }      from "../../../../Models/Business/Business_Comment_Post_Model.js";
+import { BusinessCommentReply } from "../../../../Models/Business/Business_Comment_Reply_Model.js";
+import { BusinessProduct }      from "../../../../Models/Business/Business_Product_Model.js";
+import { BusinessNotification } from "../../../../Models/Notifications/Business_Notification_Model.js";
+
+// ============================================================
+// AGGREGATIONS
+// ============================================================
+import { unifiedNotificationCommonAggregation } from "../../../../Aggregations/Notifications.js";
+
+// ============================================================
+// SOCKETS
+// ============================================================
+import { emitSocketEvent }       from "../../../../Sockets/index.js";
+import { emitUnreadCountUpdate } from "../../../../Sockets/socket.js";
+
+// ============================================================
+// UTILITIES
+// ============================================================
+import { ApiResponse }   from "../../../../Utils/API_Response.js";
+import { asyncHandler }  from "../../../../Utils/Async_Handler.js";
 import {
   getFeedCommentImageLocalPath,
   getStaticFeedCommentImageFilePath,
@@ -16,12 +36,10 @@ import {
   getStaticFeedCommentDocsFilePath,
   getFeedCommentThumbnailLocalPath,
   getStaticFeedCommentThumbnailFilePath,
-  getStaticFeedCommentVideoFilePath,
   getFeedCommentVideoLocalPath,
+  getStaticFeedCommentVideoFilePath,
   getMongoosePaginationOptions,
-} from "../../../../utils/helpers.js";
-import { unifiedNotificationCommonAggregation } from "../../../../aggregations/unifiedNotifications.js";
-
+} from "../../../../Utils/Helpers.js";
 
 export const addBusinessComment = asyncHandler(async (req, res) => {
 
