@@ -1,19 +1,15 @@
 import mongoose from "mongoose";
-import { BusinessProduct } from "../../../models/apps/business/business.product.model.js";
-import { asyncHandler } from "../../../utils/asyncHandler.js";
-import {
-    getMongoosePaginationOptions,
-} from "../../../utils/helpers.js";
-import { User } from "../../../models/apps/auth/user.models.js";
-import { SocialFollow } from "../../../models/apps/social-media/follow.models.js";
-import { BusinessNotification } from "../../../models/apps/business/businesspost/notification/business.notification.model.js";
-import { unifiedNotificationCommonAggregation } from "../../../aggregations/unifiedNotifications.js";
-import { emitSocketEvent } from "../../../socket/index.js";
-import { ApiResponse } from "../../../utils/ApiResponse.js";
-import { emitUnreadCountUpdate } from "../../../socket/socket.js";
-import { getMarketplaceRecommendations } from "../../../services/recommendation.system.service.js";
-
-
+import { User }            from "../../../Models/Aunthentication/User_Model.js";
+import { BusinessProduct } from "../../../Models/Business/Business_Product_Model.js";
+import { SocialFollow }    from "../../../Models/Shorts/Follow_Model.js";
+import { BusinessNotification } from "../../../Models/Notifications/Business_Notification_Model.js";
+import { unifiedNotificationCommonAggregation } from "../../../Aggregations/Notifications.js";
+import { emitSocketEvent }       from "../../../Sockets/index.js";
+import { emitUnreadCountUpdate } from "../../../Sockets/socket.js";
+import { ApiResponse }  from "../../../Utils/API_Response.js";
+import { asyncHandler } from "../../../Utils/Async_Handler.js";
+import { getMongoosePaginationOptions } from "../../../Utils/Helpers.js";
+import { getMarketplaceRecommendations } from "../../../Services/Recommendation_System_Service.js";
 
 const productPostAggregation = (req) => {
     const userId = new mongoose.Types.ObjectId(req.user?._id);
