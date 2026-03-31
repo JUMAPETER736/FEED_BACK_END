@@ -1,7 +1,7 @@
-import { logEvent } from "../../../services/recommendation.system.service.js";
-import { ApiError } from "../../../utils/ApiError.js";
-import { ApiResponse } from "../../../utils/ApiResponse.js";
-import { asyncHandler } from "../../../utils/asyncHandler.js";
+import { logEvent }    from "../../../Services/Recommendation_System_Service.js";
+import { ApiError }    from "../../../Utils/API_Errors.js";
+import { ApiResponse } from "../../../Utils/API_Response.js";
+import { asyncHandler } from "../../../Utils/Async_Handler.js";
 
 const VALID_ITEM_TYPES = ["post", "shot", "product", "user"];
 const VALID_EVENT_TYPES = ["view", "like", "comment", "share", "replay",

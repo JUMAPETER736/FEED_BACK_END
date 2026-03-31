@@ -1,16 +1,16 @@
 import mongoose from "mongoose";
-import { Product } from "../../../models/apps/ecommerce/product.models.js";
-import { ApiError } from "../../../utils/ApiError.js";
-import { ApiResponse } from "../../../utils/ApiResponse.js";
-import { asyncHandler } from "../../../utils/asyncHandler.js";
+import { MAXIMUM_SUB_IMAGE_COUNT } from "../../../Constants.js";
+import { Category } from "../../../Models/Ecommerce/Category_Model.js";
+import { Product }  from "../../../Models/Ecommerce/Product_Model.js";
+import { ApiError }    from "../../../Utils/API_Errors.js";
+import { ApiResponse } from "../../../Utils/API_Response.js";
+import { asyncHandler } from "../../../Utils/Async_Handler.js";
 import {
   getLocalPath,
-  getMongoosePaginationOptions,
   getStaticFilePath,
+  getMongoosePaginationOptions,
   removeLocalFile,
-} from "../../../utils/helpers.js";
-import { MAXIMUM_SUB_IMAGE_COUNT } from "../../../constants.js";
-import { Category } from "../../../models/apps/ecommerce/category.models.js";
+} from "../../../Utils/Helpers.js";
 
 const getAllProducts = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10 } = req.query;

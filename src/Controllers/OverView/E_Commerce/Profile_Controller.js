@@ -1,8 +1,10 @@
-import { EcomOrder } from "../../../models/apps/ecommerce/order.models.js";
-import { EcomProfile } from "../../../models/apps/ecommerce/profile.models.js";
-import { ApiResponse } from "../../../utils/ApiResponse.js";
-import { asyncHandler } from "../../../utils/asyncHandler.js";
-import { getMongoosePaginationOptions } from "../../../utils/helpers.js";
+
+import { EcomOrder }   from "../../../Models/Ecommerce/Order_Model.js";
+import { EcomProfile } from "../../../Models/Ecommerce/Profile_Model.js";
+import { ApiResponse }  from "../../../Utils/API_Response.js";
+import { asyncHandler } from "../../../Utils/Async_Handler.js";
+import { getMongoosePaginationOptions } from "../../../Utils/Helpers.js";
+
 
 const getMyEcomProfile = asyncHandler(async (req, res) => {
   let profile = await EcomProfile.findOne({
