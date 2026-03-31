@@ -1,9 +1,8 @@
-import { FeedBookmark } from "../../../models/apps/feed/feed_bookmark.models.js";
-import { FeedPost } from "../../../models/apps/feed/feed.model.js";
-import { ApiError } from "../../../utils/ApiError.js";
-import { ApiResponse } from "../../../utils/ApiResponse.js";
-import { asyncHandler } from "../../../utils/asyncHandler.js";
-
+import { FeedBookmark } from "../../../Models/Feed/Feed_Bookmark_Model.js";
+import { FeedPost }     from "../../../Models/Feed/Feed_Model.js";
+import { ApiError }     from "../../../Utils/API_Errors.js";
+import { ApiResponse }  from "../../../Utils/API_Response.js";
+import { asyncHandler } from "../../../Utils/Async_Handler.js";
 const bookmarkUnBookmarkPost = asyncHandler(async (req, res) => {
   const { postId } = req.params;
 

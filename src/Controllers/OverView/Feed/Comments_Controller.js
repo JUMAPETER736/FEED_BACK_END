@@ -1,19 +1,14 @@
-import mongoose from "mongoose";
 
-import { FeedComment } from "../../../models/apps/feed/feed_comment.model.js";
-import { ApiResponse } from "../../../utils/ApiResponse.js";
-import { asyncHandler } from "../../../utils/asyncHandler.js";
-import UnifiedNotification from "../../../models/apps/notifications/unified.notification.model.js";
-import { emitSocketEvent } from "../../../socket/index.js";
-import { unifiedNotificationCommonAggregation } from "../../../aggregations/unifiedNotifications.js";
-import { FeedPost } from "../../../models/apps/feed/feed.model.js";
-import {
-  getMongoosePaginationOptions,
-  getStaticThumbnailFilePath,
-  getThumbnailLocalPath,
-} from "../../../utils/helpers.js";
-import { ApiError } from "../../../utils/ApiError.js";
-import { emitUnreadCountUpdate } from "../../../socket/socket.js";
+import mongoose from "mongoose";
+import { FeedComment } from "../../../Models/Feed/Feed_Comment_Model.js";
+import { FeedPost }    from "../../../Models/Feed/Feed_Model.js";
+import UnifiedNotification from "../../../Models/Notifications/Unified_Notification_Model.js";
+import { unifiedNotificationCommonAggregation } from "../../../Aggregations/Notifications.js";
+import { emitSocketEvent }       from "../../../Sockets/index.js";
+import { emitUnreadCountUpdate } from "../../../Sockets/socket.js";
+import { ApiError }    from "../../../Utils/API_Errors.js";
+import { ApiResponse } from "../../../Utils/API_Response.js";
+import { asyncHandler } from "../../../Utils/Async_Handler.js";
 import {
   getFeedCommentImageLocalPath,
   getStaticFeedCommentImageFilePath,
@@ -25,10 +20,14 @@ import {
   getStaticFeedCommentThumbnailFilePath,
   getFeedCommentGifLocalPath,
   getStaticFeedCommentGifFilePath,
-  getStaticFeedCommentVideoFilePath,
   getFeedCommentVideoLocalPath,
+  getStaticFeedCommentVideoFilePath,
+  getMongoosePaginationOptions,
+  getStaticThumbnailFilePath,
+  getThumbnailLocalPath,
   removeLocalFile,
-} from "../../../utils/helpers.js";
+} from "../../../Utils/Helpers.js";
+
 
 const addComment = asyncHandler(async (req, res) => {
   const { postId } = req.params;
