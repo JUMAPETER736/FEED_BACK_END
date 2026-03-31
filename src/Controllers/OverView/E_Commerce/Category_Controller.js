@@ -1,8 +1,8 @@
-import { Category } from "../../../models/apps/ecommerce/category.models.js";
-import { ApiError } from "../../../utils/ApiError.js";
-import { ApiResponse } from "../../../utils/ApiResponse.js";
-import { asyncHandler } from "../../../utils/asyncHandler.js";
-import { getMongoosePaginationOptions } from "../../../utils/helpers.js";
+import { Category }  from "../../../Models/Ecommerce/Category_Model.js";
+import { ApiError }    from "../../../Utils/API_Errors.js";
+import { ApiResponse } from "../../../Utils/API_Response.js";
+import { asyncHandler } from "../../../Utils/Async_Handler.js";
+import { getMongoosePaginationOptions } from "../../../Utils/Helpers.js";
 
 const createCategory = asyncHandler(async (req, res) => {
   const { name } = req.body;

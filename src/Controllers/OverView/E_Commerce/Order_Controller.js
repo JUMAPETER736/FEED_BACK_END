@@ -7,20 +7,17 @@ import {
   OrderStatusEnum,
   PaymentProviderEnum,
   paypalBaseUrl,
-} from "../../../constants.js";
-import { Address } from "../../../models/apps/ecommerce/address.models.js";
-import { Cart } from "../../../models/apps/ecommerce/cart.models.js";
-import { EcomOrder } from "../../../models/apps/ecommerce/order.models.js";
-import { Product } from "../../../models/apps/ecommerce/product.models.js";
-import { ApiError } from "../../../utils/ApiError.js";
-import { ApiResponse } from "../../../utils/ApiResponse.js";
-import { asyncHandler } from "../../../utils/asyncHandler.js";
-import {
-  orderConfirmationMailgenContent,
-  sendEmail,
-} from "../../../utils/mail.js";
+} from "../../../Constants.js";
+import { Address }   from "../../../Models/Ecommerce/Address_Model.js";
+import { Cart }      from "../../../Models/Ecommerce/Cart_Model.js";
+import { EcomOrder } from "../../../Models/Ecommerce/Order_Model.js";
+import { Product }   from "../../../Models/Ecommerce/Product_Model.js";
+import { ApiError }    from "../../../Utils/API_Errors.js";
+import { ApiResponse } from "../../../Utils/API_Response.js";
+import { asyncHandler } from "../../../Utils/Async_Handler.js";
+import { getMongoosePaginationOptions } from "../../../Utils/Helpers.js";
+import { orderConfirmationMailgenContent, sendEmail } from "../../../Utils/Mail.js";
 import { getCart } from "./cart.controllers.js";
-import { getMongoosePaginationOptions } from "../../../utils/helpers.js";
 
 // * UTILITY FUNCTIONS
 

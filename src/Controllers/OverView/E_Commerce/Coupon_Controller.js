@@ -1,12 +1,12 @@
 import mongoose from "mongoose";
-import { CouponTypeEnum } from "../../../constants.js";
-import { Coupon } from "../../../models/apps/ecommerce/coupon.models.js";
-import { ApiError } from "../../../utils/ApiError.js";
-import { ApiResponse } from "../../../utils/ApiResponse.js";
-import { asyncHandler } from "../../../utils/asyncHandler.js";
+import { CouponTypeEnum } from "../../../Constants.js";
+import { Cart }   from "../../../Models/Ecommerce/Cart_Model.js";
+import { Coupon } from "../../../Models/Ecommerce/Coupon_Model.js";
+import { ApiError }    from "../../../Utils/API_Errors.js";
+import { ApiResponse } from "../../../Utils/API_Response.js";
+import { asyncHandler } from "../../../Utils/Async_Handler.js";
+import { getMongoosePaginationOptions } from "../../../Utils/Helpers.js";
 import { getCart } from "./cart.controllers.js";
-import { Cart } from "../../../models/apps/ecommerce/cart.models.js";
-import { getMongoosePaginationOptions } from "../../../utils/helpers.js";
 
 const createCoupon = asyncHandler(async (req, res) => {
   const {
