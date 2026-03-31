@@ -1,15 +1,15 @@
 
 
 import mongoose from "mongoose";
-import { SocialPost } from "../../../models/apps/social-media/post.models.js";
-import { SocialRepost } from "../../../models/apps/social-media/repost.models.js";
-import { ApiError } from "../../../utils/ApiError.js";
-import { ApiResponse } from "../../../utils/ApiResponse.js";
-import { asyncHandler } from "../../../utils/asyncHandler.js";
-import { getMongoosePaginationOptions } from "../../../utils/helpers.js";
-import UnifiedNotification from "../../../models/apps/notifications/unified.notification.model.js";
-import { emitSocketEvent } from "../../../socket/index.js";
-import { emitUnreadCountUpdate } from "../../../socket/socket.js";
+import { SocialPost }   from "../../../Models/Shorts/Post_Model.js";
+import { SocialRepost } from "../../../Models/Shorts/Repost_Model.js";
+import UnifiedNotification from "../../../Models/Notifications/Unified_Notification_Model.js";
+import { emitSocketEvent }       from "../../../Sockets/index.js";
+import { emitUnreadCountUpdate } from "../../../Sockets/socket.js";
+import { ApiError }    from "../../../Utils/API_Errors.js";
+import { ApiResponse } from "../../../Utils/API_Response.js";
+import { asyncHandler } from "../../../Utils/Async_Handler.js";
+import { getMongoosePaginationOptions } from "../../../Utils/Helpers.js";
 
 const notifAggregation = () => [
   {

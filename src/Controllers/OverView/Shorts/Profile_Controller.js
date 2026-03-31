@@ -1,18 +1,17 @@
 
 
 import mongoose from "mongoose";
-import { User } from "../../../models/apps/auth/user.models.js";
-import { SocialFollow } from "../../../models/apps/social-media/follow.models.js";
-import { SocialProfile } from "../../../models/apps/social-media/profile.models.js";
-import { ApiError } from "../../../utils/ApiError.js";
-import { ApiResponse } from "../../../utils/ApiResponse.js";
-import { asyncHandler } from "../../../utils/asyncHandler.js";
+import { User }          from "../../../Models/Aunthentication/User_Model.js";
+import { SocialFollow }  from "../../../Models/Shorts/Follow_Model.js";
+import { SocialProfile } from "../../../Models/Shorts/Profile_Model.js";
+import { ApiError }    from "../../../Utils/API_Errors.js";
+import { ApiResponse } from "../../../Utils/API_Response.js";
+import { asyncHandler } from "../../../Utils/Async_Handler.js";
 import {
   getLocalPath,
   getStaticFilePath,
   removeLocalFile,
-} from "../../../utils/helpers.js";
-
+} from "../../../Utils/Helpers.js";
 /**
  *
  * @param {string} userId
