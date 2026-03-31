@@ -1,15 +1,14 @@
 
-
-import { FeedPost } from "../../../models/apps/feed/feed.model.js";
-import { FeedShare } from "../../../models/apps/feed/feed_share.models.js";
-import { SocialProfile } from "../../../models/apps/social-media/profile.models.js";
-import { User } from "../../../models/apps/auth/user.models.js";
-import { ApiError } from "../../../utils/ApiError.js";
-import { ApiResponse } from "../../../utils/ApiResponse.js";
-import { asyncHandler } from "../../../utils/asyncHandler.js";
-import { getMongoosePaginationOptions } from "../../../utils/helpers.js";
 import mongoose from "mongoose";
-import { feedCommonAggregation } from "./feed.controllers.js";
+import { User }          from "../../../Models/Aunthentication/User_Model.js";
+import { FeedPost }      from "../../../Models/Feed/Feed_Model.js";
+import { FeedShare }     from "../../../Models/Feed/Feed_Share_Model.js";
+import { SocialProfile } from "../../../Models/Shorts/Profile_Model.js";
+import { ApiError }    from "../../../Utils/API_Errors.js";
+import { ApiResponse } from "../../../Utils/API_Response.js";
+import { asyncHandler } from "../../../Utils/Async_Handler.js";
+import { getMongoosePaginationOptions } from "../../../Utils/Helpers.js";
+import { feedCommonAggregation } from "./Feed_Controllers.js";
 
 
 // Toggle share (createctly like bookmark and like or delete) - exa

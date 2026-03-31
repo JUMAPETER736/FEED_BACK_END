@@ -1,14 +1,14 @@
 
 
-import { FeedPost } from "../../../models/apps/feed/feed.model.js";
-import { FeedRepost } from "../../../models/apps/feed/feed_repost.models.js";
-import { SocialProfile } from "../../../models/apps/social-media/profile.models.js";
-import { User } from "../../../models/apps/auth/user.models.js";
-import { ApiError } from "../../../utils/ApiError.js";
-import { ApiResponse } from "../../../utils/ApiResponse.js";
-import { asyncHandler } from "../../../utils/asyncHandler.js";
-import { getMongoosePaginationOptions } from "../../../utils/helpers.js";
 import mongoose from "mongoose";
+import { User }          from "../../../Models/Aunthentication/User_Model.js";
+import { FeedPost }      from "../../../Models/Feed/Feed_Model.js";
+import { FeedRepost }    from "../../../Models/Feed/Feed_Repost_Model.js";
+import { SocialProfile } from "../../../Models/Shorts/Profile_Model.js";
+import { ApiError }    from "../../../Utils/API_Errors.js";
+import { ApiResponse } from "../../../Utils/API_Response.js";
+import { asyncHandler } from "../../../Utils/Async_Handler.js";
+import { getMongoosePaginationOptions } from "../../../Utils/Helpers.js";
 
 
 
