@@ -1,20 +1,15 @@
 import mongoose from "mongoose";
-import { ChatEventEnum } from "../../../constants.js";
-import { User } from "../../../models/apps/auth/user.models.js";
-import { Chat } from "../../../models/apps/chat-app/chat.models.js";
-import { ChatMessage } from "../../../models/apps/chat-app/message.models.js";
-import { emitSocketEvent } from "../../../socket/index.js";
-import { ApiError } from "../../../utils/ApiError.js";
-import { ApiResponse } from "../../../utils/ApiResponse.js";
-import { asyncHandler } from "../../../utils/asyncHandler.js";
-import { removeLocalFile } from "../../../utils/helpers.js";
-import { UserKey } from "../../../models/apps/chat-app/userKey.model.js";
-
-import {
-  activeConnections,
-  isUserConnected,
-  isUserActive,
-} from "../../../socket/socket.js";
+import { ChatEventEnum } from "../../../Constants.js";
+import { User }        from "../../../Models/Aunthentication/User_Model.js";
+import { Chat }        from "../../../Models/Messages/Chats_Model.js";
+import { ChatMessage } from "../../../Models/Messages/Messages_Model.js";
+import { UserKey }     from "../../../Models/Messages/User_Key_Model.js";
+import { emitSocketEvent }                      from "../../../Sockets/index.js";
+import { activeConnections, isUserConnected, isUserActive } from "../../../Sockets/socket.js";
+import { ApiError }    from "../../../Utils/API_Errors.js";
+import { ApiResponse } from "../../../Utils/API_Response.js";
+import { asyncHandler } from "../../../Utils/Async_Handler.js";
+import { removeLocalFile } from "../../../Utils/Helpers.js";
 
 // ─── Permission constants ─────────────────────────────────────────────────────
 const ROLES = { ADMIN: "admin", MODERATOR: "moderator", MEMBER: "member" };

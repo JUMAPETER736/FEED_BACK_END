@@ -1,17 +1,18 @@
 
 
 import mongoose from "mongoose";
-import { Gif } from "../../../models/apps/gif/gif.model.js";
-import { ApiResponse } from "../../../utils/ApiResponse.js";
-import { asyncHandler } from "../../../utils/asyncHandler.js";
+import { Gif }         from "../../../Models/Gif/Gif_Model.js";
+import { ApiError }    from "../../../Utils/API_Errors.js";
+import { ApiResponse } from "../../../Utils/API_Response.js";
+import { asyncHandler } from "../../../Utils/Async_Handler.js";
 import {
-  getMongoosePaginationOptions,
   getStaticThumbnailFilePath,
   getThumbnailLocalPath,
   getStaticCommentGifFilePath,
   getCommentGifLocalPath,
-} from "../../../utils/helpers.js";
-import { ApiError } from "../../../utils/ApiError.js";
+  getMongoosePaginationOptions,
+} from "../../../Utils/Helpers.js";
+
 
 const addGif = asyncHandler(async (req, res) => {
   const { fileType } = req.body;
