@@ -1,17 +1,17 @@
 
 
-import { asyncHandler } from "../../../utils/asyncHandler.js";
-import Notification from "../../../models/apps/notifications/notification.model.js";
-import UnifiedNotification from "../../../models/apps/notifications/unified.notification.model.js";
+import mongoose from "mongoose";
+import CommentNotification from "../../../Models/Notifications/Comment_Notification_Model.js";
+import Notification        from "../../../Models/Notifications/Notification_Model.js";
+import UnifiedNotification from "../../../Models/Notifications/Unified_Notification_Model.js";
+import { emitUnreadCountUpdate } from "../../../Sockets/socket.js";
+import { ApiResponse }  from "../../../Utils/API_Response.js";
+import { asyncHandler } from "../../../Utils/Async_Handler.js";
 import {
-  getMongoosePaginationOptions,
   getStaticThumbnailFilePath,
   getThumbnailLocalPath,
-} from "../../../utils/helpers.js";
-import { ApiResponse } from "../../../utils/ApiResponse.js";
-import mongoose from "mongoose";
-import CommentNotification from "../../../models/apps/notifications/commentNotification.model.js";
-import { emitUnreadCountUpdate } from "../../../socket/socket.js";
+  getMongoosePaginationOptions,
+} from "../../../Utils/Helpers.js";
 /**
  * Utility function which returns the pipeline stages to structure the notification schema with common lookups.
  * @returns {mongoose.PipelineStage[]}

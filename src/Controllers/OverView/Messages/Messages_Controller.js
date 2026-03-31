@@ -1,14 +1,16 @@
 import mongoose from "mongoose";
-import { ChatEventEnum } from "../../../constants.js";
-import { Chat } from "../../../models/apps/chat-app/chat.models.js";
-import { ChatMessage } from "../../../models/apps/chat-app/message.models.js";
-import { emitSocketEvent } from "../../../socket/index.js";
-import { ApiError } from "../../../utils/ApiError.js";
-import { ApiResponse } from "../../../utils/ApiResponse.js";
-import { asyncHandler } from "../../../utils/asyncHandler.js";
-import { getLocalPath, getStaticFilePath } from "../../../utils/helpers.js";
-import { removeLocalFile } from "../../../utils/helpers.js";
-
+import { ChatEventEnum } from "../../../Constants.js";
+import { Chat }        from "../../../Models/Messages/Chats_Model.js";
+import { ChatMessage } from "../../../Models/Messages/Messages_Model.js";
+import { emitSocketEvent } from "../../../Sockets/index.js";
+import { ApiError }    from "../../../Utils/API_Errors.js";
+import { ApiResponse } from "../../../Utils/API_Response.js";
+import { asyncHandler } from "../../../Utils/Async_Handler.js";
+import {
+  getLocalPath,
+  getStaticFilePath,
+  removeLocalFile,
+} from "../../../Utils/Helpers.js";
 import { User } from "../../../models/apps/auth/user.models.js";
 // import { checkAndDeleteMessages } from "../../../utils/groupChatHelper.js";
 

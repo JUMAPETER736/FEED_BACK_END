@@ -1,11 +1,9 @@
 
-
-import { BusinessNotification } from "../../../models/apps/business/businesspost/notification/business.notification.model.js";
-import { asyncHandler } from "../../../utils/asyncHandler.js";
-import { ApiResponse } from "../../../utils/ApiResponse.js";
 import mongoose from "mongoose";
-import { emitUnreadCountUpdate } from "../../../socket/socket.js";
-
+import { BusinessNotification } from "../../../Models/Notifications/Business_Notification_Model.js";
+import { emitUnreadCountUpdate } from "../../../Sockets/socket.js";
+import { ApiResponse }  from "../../../Utils/API_Response.js";
+import { asyncHandler } from "../../../Utils/Async_Handler.js";
 
 const unifiedNotificationCommonAggregation = (page = 1, pageSize = 5) => {
     return [
