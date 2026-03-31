@@ -1,8 +1,8 @@
 import quotesJson from "../../json/quotes.json" assert { type: "json" };
-import { filterObjectKeys, getPaginatedPayload } from "../../utils/helpers.js";
-import { ApiError } from "../../utils/ApiError.js";
-import { ApiResponse } from "../../utils/ApiResponse.js";
-import { asyncHandler } from "../../utils/asyncHandler.js";
+import { ApiError }    from "../../Utils/API_Errors.js";
+import { ApiResponse } from "../../Utils/API_Response.js";
+import { asyncHandler } from "../../Utils/Async_Handler.js";
+import { filterObjectKeys, getPaginatedPayload } from "../../Utils/Helpers.js";
 
 const getQuotes = asyncHandler(async (req, res) => {
   const page = +(req.query.page || 1);
