@@ -1,16 +1,14 @@
 
-
-
 import { faker } from "@faker-js/faker";
-import { User } from "../models/apps/auth/user.models.js";
-import { SocialBookmark } from "../models/apps/social-media/bookmark.models.js";
-import { SocialComment } from "../models/apps/social-media/comment.models.js";
-import { SocialFollow } from "../models/apps/social-media/follow.models.js";
-import { SocialLike } from "../models/apps/social-media/like.models.js";
-import { SocialPost } from "../models/apps/social-media/post.models.js";
-import { SocialProfile } from "../models/apps/social-media/profile.models.js";
-import { ApiResponse } from "../utils/ApiResponse.js";
-import { asyncHandler } from "../utils/asyncHandler.js";
+import { User } from "../Models/Aunthentication/auth/User_Model.js";
+import { SocialBookmark } from "../Models/Shorts/Bookmark_Model.js";
+import { SocialComment } from "../Models/Shorts/Comment_Model.js";
+import { SocialFollow } from "../Models/Shorts/Follow_Model.js";
+import { SocialLike } from "../Models/Shorts/Like_Model.js";
+import { SocialPost } from "../Modelss/Shorts/Post_Model.js";
+import { SocialProfile } from "../Models/Shorts/Profile_Model.js";
+import { ApiResponse } from "../Utils/API_Response.js";
+import { asyncHandler } from "../Utils/Async_Handler.js";
 import { getRandomNumber } from "../Utils/Helpers.js";
 import {
   SOCIAL_BOOKMARKS_COUNT,
@@ -20,8 +18,6 @@ import {
   SOCIAL_POSTS_COUNT,
   SOCIAL_POST_IMAGES_COUNT,
 } from "./_constants.js";
-
-
 
 // generate random posts
 const posts = new Array(SOCIAL_POSTS_COUNT).fill("_").map(() => {
@@ -69,7 +65,6 @@ const seedSocialProfiles = async () => {
   });
   await Promise.all(profileUpdatePromise); // resolve all promises
 };
-
 
 const seedSocialPosts = async () => {
   await SocialPost.deleteMany({});
@@ -126,8 +121,7 @@ const seedSocialLikes = async () => {
       );
     });
 
-
-    // Comment likes documents
+  // Comment likes documents
   const socialCommentsLikesPromise = new Array(SOCIAL_LIKES_COUNT)
     .fill("_")
     .map(async () => {
@@ -185,3 +179,51 @@ const seedSocialFollowers = async () => {
     });
   await Promise.all(socialFollowerPromise);
 };
+
+const seedSocialBookmarks = async () => {
+  await SocialBookmark.deleteMany({});
+  const users = await User.find();
+  const posts = await SocialPost.find();
+  const socialPostsBookmarksPromise = new Array(SOCIAL_BOOKMARKS_COUNT)
+    .fill("_")
+    .map(async () => {
+      const bookmarkedBy = users[getRandomNumber(users.length)];
+      const post = posts[getRandomNumber(posts.length)];
+
+      await SocialBookmark.findOneAndUpdate(
+        {
+          postId: post._id,
+          bookmarkedBy: bookmarkedBy._id,
+        },
+        {
+          $set: {
+            postId: post._id,
+            bookmarkedBy: bookmarkedBy._id,
+          },
+        },
+        { upsert: true } // We don't want duplicate entries of the bookmarks. So if found then update else insert
+      );
+    });
+
+  await Promise.all(socialPostsBookmarksPromise);
+};
+
+const seedSocialMedia = asyncHandler(async (req, res) => {
+  await seedSocialProfiles();
+  await seedSocialPosts();
+  await seedSocialComments();
+  await seedSocialLikes();
+  await seedSocialFollowers();
+  await seedSocialBookmarks();
+  return res
+    .status(201)
+    .json(
+      new ApiResponse(
+        201,
+        {},
+        "Database populated for social media successfully"
+      )
+    );
+});
+
+export { seedSocialMedia };
